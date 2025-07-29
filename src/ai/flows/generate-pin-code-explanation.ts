@@ -33,12 +33,18 @@ const prompt = ai.definePrompt({
   name: 'generatePinCodeExplanationPrompt',
   input: {schema: GeneratePinCodeExplanationInputSchema},
   output: {schema: GeneratePinCodeExplanationOutputSchema},
-  prompt: `You are an expert in local Indian geography and history. You will use your knowledge, along with village information to explain the significance of a PIN code.
-
+  prompt: `You are an expert in local Indian geography and history. You will use your knowledge to explain the significance of a PIN code.
+  
+  {{#if villageInformation}}
+  Use the provided village information as the primary source for your explanation.
   Village Information: {{{villageInformation}}}
+  {{else}}
+  No local information was provided. Use your own knowledge to find and explain the significance of the provided PIN code.
+  {{/if}}
+
   PIN code: {{{pinCode}}}
 
-  Explain the significance of the provided PIN code based on the village information. Focus on historical, cultural, and geographical aspects.  The PIN code explanation should be concise and easy to understand by the user.`,
+  Explain the significance of the provided PIN code. Focus on historical, cultural, and geographical aspects. The explanation should be concise and easy for a user to understand.`,
 });
 
 const generatePinCodeExplanationFlow = ai.defineFlow(
@@ -48,6 +54,11 @@ const generatePinCodeExplanationFlow = ai.defineFlow(
     outputSchema: GeneratePinCodeExplanationOutputSchema,
   },
   async input => {
+    // A little trick: if we pass 'No local information available.', we should clear it
+    // so the handlebars template can use the {{#if villageInformation}} block correctly.
+    if (input.villageInformation === 'No local information available.') {
+      input.villageInformation = '';
+    }
     const {output} = await prompt(input);
     return output!;
   }
