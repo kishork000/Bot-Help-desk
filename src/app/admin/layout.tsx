@@ -1,5 +1,5 @@
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
-import { Home, Settings, Database, MessageSquare, BookText } from "lucide-react";
+import { Home, Settings, Database, MessageSquare, BookText, Cable } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminLayout({
@@ -24,6 +24,14 @@ export default function AdminLayout({
               <SidebarMenuButton>
                 <Database />
                 Databases
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <Link href="/admin/apis">
+              <SidebarMenuButton>
+                <Cable />
+                APIs
               </SidebarMenuButton>
             </Link>
           </SidebarMenuItem>
