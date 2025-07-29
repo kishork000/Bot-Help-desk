@@ -11,14 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredQueries, deleteUnansweredQuery } from "@/lib/db";
+import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredConversations, deleteUnansweredConversation } from "@/lib/db";
 import { PlusCircle, MessageSquarePlus, Trash2 } from "lucide-react";
 import { format } from 'date-fns';
 
 type FaqItem = { id: number; question: string; answer: string; };
 type PinCodeData = Record<string, string>;
 type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; url: string; };
-type UnansweredQuery = { id: number, query: string, timestamp: string };
+type UnansweredQuery = { id: number, query: string, answer: string | null, timestamp: string };
 
 export default function ContentPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
@@ -39,15 +39,15 @@ export default function ContentPage() {
       setFaqs(await getFaqs());
       setPinCodeData(await getPinCodes());
       setMedia(await getMedia());
-      setUnansweredQueries(await getUnansweredQueries());
+      setUnansweredQueries(await getUnansweredConversations());
   }
 
   useEffect(() => {
     loadContent();
   }, []);
 
-  const handleOpenFaqDialog = (faq: FaqItem | null = null, question: string = '') => {
-    setCurrentFaq(faq ? { ...faq } : { question: question, answer: '' });
+  const handleOpenFaqDialog = (faq: FaqItem | null = null, question: string = '', answer: string = '') => {
+    setCurrentFaq(faq ? { ...faq } : { question: question, answer: answer });
     setIsFaqDialogOpen(true);
   };
 
@@ -108,13 +108,13 @@ export default function ContentPage() {
   }
 
   const handleCreateFaqFromQuery = async (query: UnansweredQuery) => {
-    handleOpenFaqDialog(null, query.query);
-    await deleteUnansweredQuery(query.id);
+    handleOpenFaqDialog(null, query.query, query.answer || '');
+    await deleteUnansweredConversation(query.id);
     await loadContent();
   };
 
   const handleDeleteQuery = async (id: number) => {
-      await deleteUnansweredQuery(id);
+      await deleteUnansweredConversation(id);
       await loadContent();
   }
 
@@ -217,16 +217,17 @@ export default function ContentPage() {
       <TabsContent value="unanswered" className="mt-6">
         <Card>
           <CardHeader>
-            <CardTitle>Unanswered Queries</CardTitle>
+            <CardTitle>Unanswered Conversations</CardTitle>
             <CardDescription>
-              Review questions your users asked that the chatbot couldn't answer.
+              Review questions your users asked that the chatbot couldn't answer, along with an AI-suggested answer.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[60%]">Query</TableHead>
+                  <TableHead className="w-[40%]">Query</TableHead>
+                  <TableHead className="w-[40%]">Suggested Answer</TableHead>
                   <TableHead>Timestamp</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -234,7 +235,7 @@ export default function ContentPage() {
               <TableBody>
                 {unansweredQueries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       No unanswered queries yet. Good job!
                     </TableCell>
                   </TableRow>
@@ -242,6 +243,7 @@ export default function ContentPage() {
                   unansweredQueries.map((query) => (
                     <TableRow key={query.id}>
                       <TableCell className="font-medium">{query.query}</TableCell>
+                      <TableCell className="text-muted-foreground">{query.answer}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(query.timestamp), "PPP p")}
                       </TableCell>
@@ -460,4 +462,5 @@ export default function ContentPage() {
     </Dialog>
     </>
   );
-}
+
+    
