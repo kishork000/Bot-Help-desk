@@ -12,16 +12,20 @@ export default function AdminLayout({
       <Sidebar>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/admin">
-              <Home />
-              Dashboard
-            </SidebarMenuButton>
+            <Link href="/admin">
+              <SidebarMenuButton>
+                <Home />
+                Dashboard
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/admin/databases">
-              <Database />
-              Databases
-            </SidebarMenuButton>
+            <Link href="/admin/databases">
+              <SidebarMenuButton>
+                <Database />
+                Databases
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton href="#">
@@ -30,10 +34,12 @@ export default function AdminLayout({
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton href="/">
-              <MessageSquare />
-              Chatbot
-            </SidebarMenuButton>
+            <Link href="/">
+              <SidebarMenuButton>
+                <MessageSquare />
+                Chatbot
+              </SidebarMenuButton>
+            </Link>
           </SidebarMenuItem>
         </SidebarMenu>
       </Sidebar>
