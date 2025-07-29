@@ -12,7 +12,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredConversations, deleteUnansweredConversation } from "@/lib/db";
-import { PlusCircle, MessageSquarePlus, Trash2, MoreHorizontal } from "lucide-react";
+import { PlusCircle, MessageSquarePlus, Trash2, MoreHorizontal, LinkIcon } from "lucide-react";
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +22,12 @@ type FaqItem = { id: number; question: string; answer: string; };
 type PinCodeData = Record<string, string>;
 type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; url: string; };
 type UnansweredQuery = { id: number, query: string, answer: string | null, timestamp: string };
+type CategorizeSelection = {
+  faq: boolean;
+  pincode: boolean;
+  media: boolean;
+  script: boolean;
+};
 
 export default function ContentPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
@@ -39,6 +45,11 @@ export default function ContentPage() {
 
   const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
   const [currentMedia, setCurrentMedia] = useState<Partial<MediaItem> | null>(null);
+  
+  const [isCategorizeDialogOpen, setIsCategorizeDialogOpen] = useState(false);
+  const [currentCategorizeQuery, setCurrentCategorizeQuery] = useState<UnansweredQuery | null>(null);
+  const [categorizeSelection, setCategorizeSelection] = useState<CategorizeSelection>({ faq: false, pincode: false, media: false, script: false });
+
 
   async function loadContent() {
       setFaqs(await getFaqs());
@@ -153,6 +164,37 @@ export default function ContentPage() {
     });
   }
 
+  const handleOpenCategorizeDialog = (query: UnansweredQuery) => {
+    setCurrentCategorizeQuery(query);
+    setCategorizeSelection({ faq: false, pincode: false, media: false, script: false });
+    setIsCategorizeDialogOpen(true);
+  };
+
+  const handleSaveCategorization = async () => {
+    if (!currentCategorizeQuery) return;
+    
+    // In the future, this is where we would save the links.
+    // For now, it will just close the dialog.
+    console.log("Saving categorization for:", currentCategorizeQuery.query, "with selections:", categorizeSelection);
+    toast({
+        title: "Categorization Saved (Simulation)",
+        description: "In the next step, we will make the bot use this information.",
+    });
+
+    if(categorizeSelection.faq) {
+      handleOpenFaqDialog(null, currentCategorizeQuery.query, currentCategorizeQuery.answer || '');
+    }
+    if(categorizeSelection.pincode) {
+       handleOpenPinCodeDialog(currentCategorizeQuery.query, currentCategorizeQuery.answer || '');
+    }
+    if(categorizeSelection.media) {
+       handleOpenMediaDialog(null, currentCategorizeQuery.query);
+    }
+    // TODO: Handle script logic when available
+
+    setIsCategorizeDialogOpen(false);
+    setCurrentCategorizeQuery(null);
+  };
 
   return (
     <>
@@ -307,33 +349,10 @@ export default function ContentPage() {
                         {format(new Date(query.timestamp), "PPP p")}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Actions</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onSelect={() => handleOpenFaqDialog(null, query.query, query.answer || '')}>
-                                <MessageSquarePlus className="mr-2 h-4 w-4"/>
-                                Add to FAQs
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleOpenPinCodeDialog(query.query, query.answer || '')}>
-                                <MessageSquarePlus className="mr-2 h-4 w-4"/>
-                                Add to PIN Codes
-                            </DropdownMenuItem>
-                             <DropdownMenuItem onSelect={() => handleOpenMediaDialog(null, query.query)}>
-                                <MessageSquarePlus className="mr-2 h-4 w-4"/>
-                                Add to Media
-                            </DropdownMenuItem>
-                            <DropdownMenuItem disabled>
-                                <MessageSquarePlus className="mr-2 h-4 w-4"/>
-                                Add to Scripts (soon)
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
+                        <Button variant="outline" size="sm" onClick={() => handleOpenCategorizeDialog(query)}>
+                            <LinkIcon className="mr-2 h-4 w-4"/>
+                            Categorize
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteQuery(query.id)}>
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">Delete</span>
@@ -540,6 +559,48 @@ export default function ContentPage() {
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsMediaDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleSaveMedia}>Save</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog open={isCategorizeDialogOpen} onOpenChange={setIsCategorizeDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+                <DialogTitle>Categorize Query</DialogTitle>
+                <DialogDescription>
+                    Link this query to one or more knowledge categories. The bot will use this to provide options to the user.
+                </DialogDescription>
+            </DialogHeader>
+            {currentCategorizeQuery && (
+              <div className="grid gap-4 py-4">
+                  <div className="p-4 border rounded-md">
+                      <p className="font-semibold text-sm">User Query:</p>
+                      <p className="text-sm text-muted-foreground italic">"{currentCategorizeQuery.query}"</p>
+                  </div>
+                  <div className="grid gap-3">
+                      <Label>Link to:</Label>
+                      <div className="flex items-center space-x-2">
+                          <Checkbox id="cat-faq" checked={categorizeSelection.faq} onCheckedChange={(checked) => setCategorizeSelection(s => ({...s, faq: !!checked}))} />
+                          <Label htmlFor="cat-faq" className="font-normal">FAQ</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                          <Checkbox id="cat-pincode" checked={categorizeSelection.pincode} onCheckedChange={(checked) => setCategorizeSelection(s => ({...s, pincode: !!checked}))} />
+                          <Label htmlFor="cat-pincode" className="font-normal">PIN Code</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                          <Checkbox id="cat-media" checked={categorizeSelection.media} onCheckedChange={(checked) => setCategorizeSelection(s => ({...s, media: !!checked}))} />
+                          <Label htmlFor="cat-media" className="font-normal">Media</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                          <Checkbox id="cat-script" checked={categorizeSelection.script} onCheckedChange={(checked) => setCategorizeSelection(s => ({...s, script: !!checked}))} disabled/>
+                          <Label htmlFor="cat-script" className="font-normal text-muted-foreground">Script (coming soon)</Label>
+                      </div>
+                  </div>
+              </div>
+            )}
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCategorizeDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveCategorization}>Save & Add Content</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
