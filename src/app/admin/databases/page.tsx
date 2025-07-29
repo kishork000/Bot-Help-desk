@@ -81,6 +81,7 @@ export default function DatabasesPage() {
                         <SelectItem value="postgresql">PostgreSQL</SelectItem>
                         <SelectItem value="mysql">MySQL</SelectItem>
                         <SelectItem value="mongodb">MongoDB</SelectItem>
+                        <SelectItem value="sqlite">SQLite</SelectItem>
                     </SelectContent>
                 </Select>
               </div>
@@ -158,3 +159,5 @@ export default function DatabasesPage() {
       </Card>
     </div>
   );
+
+    
