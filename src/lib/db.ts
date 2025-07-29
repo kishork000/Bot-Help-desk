@@ -76,12 +76,12 @@ export async function getFaqs() {
 
 export async function addFaq(question: string, answer: string) {
     const db = await getDb();
-    return db.run('INSERT INTO faqs (question, answer) VALUES (?, ?)', question, answer);
+    await db.run('INSERT INTO faqs (question, answer) VALUES (?, ?)', question, answer);
 }
 
 export async function updateFaq(id: number, question: string, answer: string) {
     const db = await getDb();
-    return db.run('UPDATE faqs SET question = ?, answer = ? WHERE id = ?', question, answer, id);
+    await db.run('UPDATE faqs SET question = ?, answer = ? WHERE id = ?', question, answer, id);
 }
 
 // --- PIN Code Management ---
@@ -96,12 +96,12 @@ export async function getPinCodes() {
 
 export async function addPinCode(pincode: string, info: string) {
     const db = await getDb();
-    return db.run('INSERT INTO pincodes (pincode, info) VALUES (?, ?)', pincode, info);
+    await db.run('INSERT INTO pincodes (pincode, info) VALUES (?, ?)', pincode, info);
 }
 
 export async function updatePinCode(pincode: string, info: string) {
     const db = await getDb();
-    return db.run('UPDATE pincodes SET info = ? WHERE pincode = ?', info, pincode);
+    await db.run('UPDATE pincodes SET info = ? WHERE pincode = ?', info, pincode);
 }
 
 // --- Media Management ---
@@ -112,12 +112,12 @@ export async function getMedia() {
 
 export async function addMedia(title: string, type: 'video' | 'image' | 'reel', url: string) {
     const db = await getDb();
-    return db.run('INSERT INTO media (title, type, url) VALUES (?, ?, ?)', title, type, url);
+    await db.run('INSERT INTO media (title, type, url) VALUES (?, ?, ?)', title, type, url);
 }
 
 export async function updateMedia(id: number, title: string, type: 'video' | 'image' | 'reel', url: string) {
     const db = await getDb();
-    return db.run('UPDATE media SET title = ?, type = ?, url = ? WHERE id = ?', title, type, url, id);
+    await db.run('UPDATE media SET title = ?, type = ?, url = ? WHERE id = ?', title, type, url, id);
 }
 
 export async function searchMedia(query: string) {
@@ -134,10 +134,10 @@ export async function getUnansweredQueries() {
 
 export async function addUnansweredQuery(query: string) {
     const db = await getDb();
-    return db.run('INSERT INTO unanswered_queries (query) VALUES (?)', query);
+    await db.run('INSERT INTO unanswered_queries (query) VALUES (?)', query);
 }
 
 export async function deleteUnansweredQuery(id: number) {
     const db = await getDb();
-    return db.run('DELETE FROM unanswered_queries WHERE id = ?', id);
+    await db.run('DELETE FROM unanswered_queries WHERE id = ?', id);
 }
