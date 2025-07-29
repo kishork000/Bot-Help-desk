@@ -32,9 +32,10 @@ async function initializeDatabase() {
             url TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS unanswered_queries (
+        CREATE TABLE IF NOT EXISTS unanswered_conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             query TEXT NOT NULL,
+            answer TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
@@ -58,6 +59,18 @@ async function initializeDatabase() {
         await stmt.finalize();
     }
     
+    // Migration for old unanswered_queries table
+    try {
+        const oldTableInfo = await newDb.get("SELECT name FROM sqlite_master WHERE type='table' AND name='unanswered_queries'");
+        if (oldTableInfo) {
+            await newDb.exec('ALTER TABLE unanswered_queries RENAME TO unanswered_conversations');
+            await newDb.exec('ALTER TABLE unanswered_conversations ADD COLUMN answer TEXT');
+        }
+    } catch (error) {
+        console.warn("Could not perform migration for unanswered_queries. This is expected if the table didn't exist.", error);
+    }
+
+
     return newDb;
 }
 
@@ -135,18 +148,18 @@ export async function searchMedia(query: string) {
 }
 
 
-// --- Unanswered Queries Management ---
-export async function getUnansweredQueries() {
+// --- Unanswered Conversations Management ---
+export async function getUnansweredConversations() {
     const db = await getDb();
-    return db.all('SELECT id, query, timestamp FROM unanswered_queries ORDER BY timestamp DESC');
+    return db.all('SELECT id, query, answer, timestamp FROM unanswered_conversations ORDER BY timestamp DESC');
 }
 
-export async function addUnansweredQuery(query: string) {
+export async function addUnansweredConversation(query: string, answer: string) {
     const db = await getDb();
-    await db.run('INSERT INTO unanswered_queries (query) VALUES (?)', query);
+    await db.run('INSERT INTO unanswered_conversations (query, answer) VALUES (?, ?)', query, answer);
 }
 
-export async function deleteUnansweredQuery(id: number) {
+export async function deleteUnansweredConversation(id: number) {
     const db = await getDb();
-    await db.run('DELETE FROM unanswered_queries WHERE id = ?', id);
+    await db.run('DELETE FROM unanswered_conversations WHERE id = ?', id);
 }

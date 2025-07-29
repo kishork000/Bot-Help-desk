@@ -3,8 +3,9 @@
 
 import { generatePinCodeExplanation } from '@/ai/flows/generate-pin-code-explanation';
 import { summarizeFAQ } from '@/ai/flows/summarize-faq';
-import { addUnansweredQuery, getDb } from '@/lib/db';
+import { getDb, addUnansweredConversation } from '@/lib/db';
 import { tellJoke } from '@/ai/flows/tell-joke';
+import { answerGeneralQuestion } from '@/ai/flows/answer-general-question';
 
 const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
 const jokeRegex = /joke/i;
@@ -40,7 +41,7 @@ export async function handleUserMessage(message: string): Promise<string> {
         return 'Sorry, I had trouble getting information for that PIN code. Please try again later.';
       }
     } else {
-      await addUnansweredQuery(`PIN code: ${pinCode}`);
+      await addUnansweredConversation( `PIN code: ${pinCode}`, 'No information found for this PIN code.');
       return `I don't have information for the PIN code ${pinCode}. I've logged this for future improvement.`;
     }
   }
@@ -56,17 +57,22 @@ export async function handleUserMessage(message: string): Promise<string> {
       faqEntries: faqEntriesString,
     });
 
-    // A bit of a heuristic: if the summary is very short, it might not be a good answer.
-    // A more robust solution would be to have the Genkit flow return a confidence score.
+    // A bit of a heuristic: if the summary is very short or doesn't seem to answer, fallback.
     if (result.summary.length < 20 || !result.summary.includes(' ')) {
-        await addUnansweredQuery(message);
-        return "I couldn't find a specific answer for your question in my knowledge base. I've logged it for review. Is there anything else I can help with?";
+       // Throw an error to trigger the fallback logic in the catch block
+       throw new Error("Summary not sufficient, fallback to general knowledge.");
     }
 
     return result.summary;
   } catch (error) {
-    console.error('Error calling summarizeFAQ:', error);
-    await addUnansweredQuery(message);
-    return "I couldn't find a specific answer for your question. I've logged it for review. Is there anything else I can help with?";
+    console.log("FAQ summarization failed or was insufficient, trying general knowledge fallback. Error:", error);
+    try {
+        const generalAnswer = await answerGeneralQuestion({ query: message });
+        await addUnansweredConversation(message, generalAnswer.answer);
+        return generalAnswer.answer + "\n\n(I've logged this question for our team to review.)";
+    } catch (genError) {
+        console.error('Error calling answerGeneralQuestion:', genError);
+        return "I'm having trouble finding an answer right now. Please try asking something else.";
+    }
   }
 }
