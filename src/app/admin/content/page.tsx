@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -22,6 +23,7 @@ type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; 
 type UnansweredQuery = { id: number, query: string, answer: string | null, timestamp: string };
 
 const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
+const mediaRegex = /\b(video|image|reel|photo|picture)\b/i;
 
 export default function ContentPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
@@ -93,7 +95,7 @@ export default function ContentPage() {
     setCurrentPinCode(null);
   };
 
-  const handleOpenMediaDialog = (mediaItem: MediaItem | null = null) => {
+  const handleOpenMediaDialog = (mediaItem: Partial<MediaItem> | null = null) => {
     setCurrentMedia(mediaItem ? { ...mediaItem } : { title: '', type: 'video', url: '' });
     setIsMediaDialogOpen(true);
   };
@@ -114,10 +116,13 @@ export default function ContentPage() {
 
   const handleCreateKnowledgeFromQuery = async (query: UnansweredQuery) => {
     const pinCodeMatch = query.query.match(pinCodeRegex);
+    const mediaMatch = query.query.match(mediaRegex);
 
     if (pinCodeMatch && query.answer) {
         const pinCode = pinCodeMatch[0];
         handleOpenPinCodeDialog(pinCode, query.answer);
+    } else if (mediaMatch) {
+        handleOpenMediaDialog({ title: query.query, type: 'video', url: '' });
     } else {
         handleOpenFaqDialog(null, query.query, query.answer || '');
     }
@@ -390,7 +395,7 @@ export default function ContentPage() {
                 <CardDescription>
                 Manage custom scripts and advanced chatbot responses. (Coming soon)
                 </CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent>
                 <div className="text-center text-muted-foreground py-12">
                     <p>This section is under construction.</p>
@@ -533,5 +538,3 @@ export default function ContentPage() {
     </>
   );
 }
-
-    
