@@ -156,7 +156,7 @@ export default function ContentPage() {
 
   return (
     <>
-    <Tabs defaultValue="faq">
+    <Tabs defaultValue="unanswered">
       <div className="flex justify-between items-start">
         <div>
             <h2 className="text-2xl font-bold">Content Management</h2>
