@@ -163,9 +163,9 @@ export default function ContentPage() {
             <p className="text-muted-foreground">Manage your chatbot's knowledge base.</p>
         </div>
         <TabsList>
+          <TabsTrigger value="unanswered">Unanswered Queries</TabsTrigger>
           <TabsTrigger value="faq">FAQs</TabsTrigger>
           <TabsTrigger value="pincodes">PIN Codes</TabsTrigger>
-          <TabsTrigger value="unanswered">Unanswered Queries</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="scripts">Scripts</TabsTrigger>
         </TabsList>
@@ -309,7 +309,7 @@ export default function ContentPage() {
                       <TableCell className="text-right space-x-2">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="icon">
                               <MoreHorizontal className="h-4 w-4" />
                               <span className="sr-only">Actions</span>
                             </Button>
@@ -326,6 +326,10 @@ export default function ContentPage() {
                              <DropdownMenuItem onSelect={() => handleOpenMediaDialog(null, query.query)}>
                                 <MessageSquarePlus className="mr-2 h-4 w-4"/>
                                 Add to Media
+                            </DropdownMenuItem>
+                            <DropdownMenuItem disabled>
+                                <MessageSquarePlus className="mr-2 h-4 w-4"/>
+                                Add to Scripts (soon)
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
