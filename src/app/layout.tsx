@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'SevaSphere',
+  title: 'Bot Help-desk',
   description: 'AI assistant for public services',
 };
 

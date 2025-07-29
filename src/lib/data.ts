@@ -1,15 +1,15 @@
 export const faqs = [
   {
-    question: "What is SevaSphere?",
-    answer: "SevaSphere is a chatbot designed to provide information about government services, local village details via PIN codes, and answer frequently asked questions in both English and Hindi."
+    question: "What is Bot Help-desk?",
+    answer: "Bot Help-desk is a chatbot designed to provide information about government services, local village details via PIN codes, and answer frequently asked questions in both English and Hindi."
   },
   {
     question: "How do I check information for my village?",
-    answer: "Simply type in the 6-digit PIN code of your area, and SevaSphere will provide you with relevant geographical and historical information."
+    answer: "Simply type in the 6-digit PIN code of your area, and Bot Help-desk will provide you with relevant geographical and historical information."
   },
   {
     question: "Which languages are supported?",
-    answer: "SevaSphere supports both English and Hindi. You can ask questions in either language."
+    answer: "Bot Help-desk supports both English and Hindi. You can ask questions in either language."
   },
   {
     question: "What kind of government services information can I get?",
@@ -17,7 +17,7 @@ export const faqs = [
   },
   {
       question: "Is this service free?",
-      answer: "Yes, SevaSphere is completely free to use."
+      answer: "Yes, Bot Help-desk is completely free to use."
   }
 ];
 

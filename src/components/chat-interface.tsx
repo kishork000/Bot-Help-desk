@@ -14,7 +14,7 @@ export function ChatInterface() {
     {
       id: "initial",
       role: "bot",
-      content: "Hello! I'm SevaSphere. How can I assist you today? You can ask me questions or enter a 6-digit PIN code for local information.",
+      content: "Hello! I'm Bot Help-desk. How can I assist you today? You can ask me questions or enter a 6-digit PIN code for local information.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -60,7 +60,7 @@ export function ChatInterface() {
   return (
     <Card className="w-full max-w-2xl mx-auto shadow-2xl rounded-2xl overflow-hidden">
         <CardHeader className="text-center bg-card border-b">
-            <CardTitle className="font-headline text-3xl tracking-tight">SevaSphere</CardTitle>
+            <CardTitle className="font-headline text-3xl tracking-tight">Bot Help-desk</CardTitle>
             <CardDescription>Your AI assistant for public services</CardDescription>
         </CardHeader>
       <CardContent className="p-0">
