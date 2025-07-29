@@ -43,6 +43,7 @@ export async function handleUserMessage(message: string): Promise<string> {
        throw new Error("Answer from tools was insufficient, fallback to general knowledge.");
     }
 
+    // Return just the answer string from the structured response.
     return result.answer;
 
   } catch (error) {
