@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,48 +11,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { faqs as initialFaqs, pinCodeData as initialPinCodeData } from "@/lib/data";
+import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia } from "@/lib/db";
 import { PlusCircle } from "lucide-react";
 
-type MediaItem = { title: string; type: 'video' | 'image' | 'reel'; url: string; index?: number };
+type FaqItem = { id: number; question: string; answer: string; };
+type PinCodeData = Record<string, string>;
+type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; url: string; };
 
 export default function ContentPage() {
-  const [faqs, setFaqs] = useState(initialFaqs);
-  const [pinCodeData, setPinCodeData] = useState(initialPinCodeData);
-  const [media, setMedia] = useState<Omit<MediaItem, 'index'>[]>([]);
+  const [faqs, setFaqs] = useState<FaqItem[]>([]);
+  const [pinCodeData, setPinCodeData] = useState<PinCodeData>({});
+  const [media, setMedia] = useState<MediaItem[]>([]);
 
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false);
-  const [currentFaq, setCurrentFaq] = useState<{ question: string, answer: string, index?: number } | null>(null);
+  const [currentFaq, setCurrentFaq] = useState<{ id?: number, question: string, answer: string } | null>(null);
 
   const [isPinCodeDialogOpen, setIsPinCodeDialogOpen] = useState(false);
   const [currentPinCode, setCurrentPinCode] = useState<{ pincode: string, info: string, isEditing: boolean } | null>(null);
 
   const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
-  const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
+  const [currentMedia, setCurrentMedia] = useState<Partial<MediaItem> | null>(null);
 
-  const handleOpenFaqDialog = (faq: { question: string, answer: string } | null = null, index: number | undefined = undefined) => {
-    setCurrentFaq(faq ? { ...faq, index } : { question: '', answer: '' });
+  async function loadContent() {
+      setFaqs(await getFaqs());
+      setPinCodeData(await getPinCodes());
+      setMedia(await getMedia());
+  }
+
+  useEffect(() => {
+    loadContent();
+  }, []);
+
+  const handleOpenFaqDialog = (faq: FaqItem | null = null) => {
+    setCurrentFaq(faq ? { ...faq } : { question: '', answer: '' });
     setIsFaqDialogOpen(true);
   };
 
-  const handleSaveFaq = () => {
+  const handleSaveFaq = async () => {
     if (!currentFaq) return;
-
-    // In a real app, you would call an API to save this data.
-    // For now, we update the state which is read by the chatbot.
-    if (currentFaq.index !== undefined) {
-      const updatedFaqs = [...faqs];
-      updatedFaqs[currentFaq.index] = { question: currentFaq.question, answer: currentFaq.answer };
-      setFaqs(updatedFaqs);
-      // This is where you would also update the master data in a real DB
-      initialFaqs[currentFaq.index] = { question: currentFaq.question, answer: currentFaq.answer };
+    
+    if (currentFaq.id !== undefined) {
+      await updateFaq(currentFaq.id, currentFaq.question, currentFaq.answer);
     } else {
-      const newFaq = { question: currentFaq.question, answer: currentFaq.answer };
-      setFaqs([...faqs, newFaq]);
-      // This is where you would also update the master data in a real DB
-      initialFaqs.push(newFaq);
+      await addFaq(currentFaq.question, currentFaq.answer);
     }
     
+    await loadContent();
     setIsFaqDialogOpen(false);
     setCurrentFaq(null);
   };
@@ -66,39 +70,35 @@ export default function ContentPage() {
     setIsPinCodeDialogOpen(true);
   };
 
-  const handleSavePinCode = () => {
+  const handleSavePinCode = async () => {
     if (!currentPinCode) return;
 
-    const newPinCodeData = {
-      ...pinCodeData,
-      [currentPinCode.pincode]: currentPinCode.info
-    };
-    setPinCodeData(newPinCodeData);
-    // This is where you would also update the master data in a real DB
-    initialPinCodeData[currentPinCode.pincode] = currentPinCode.info;
-
+    if (currentPinCode.isEditing) {
+        await updatePinCode(currentPinCode.pincode, currentPinCode.info);
+    } else {
+        await addPinCode(currentPinCode.pincode, currentPinCode.info);
+    }
+    
+    await loadContent();
     setIsPinCodeDialogOpen(false);
     setCurrentPinCode(null);
   };
 
-  const handleOpenMediaDialog = (mediaItem: Omit<MediaItem, 'index'> | null = null, index: number | undefined = undefined) => {
-    setCurrentMedia(mediaItem ? { ...mediaItem, index } : { title: '', type: 'video', url: '' });
+  const handleOpenMediaDialog = (mediaItem: MediaItem | null = null) => {
+    setCurrentMedia(mediaItem ? { ...mediaItem } : { title: '', type: 'video', url: '' });
     setIsMediaDialogOpen(true);
   };
 
-  const handleSaveMedia = () => {
-    if (!currentMedia) return;
+  const handleSaveMedia = async () => {
+    if (!currentMedia || !currentMedia.title || !currentMedia.type || !currentMedia.url) return;
     
-    const { index, ...newMediaItem } = currentMedia;
-
-    if (index !== undefined) {
-      const updatedMedia = [...media];
-      updatedMedia[index] = newMediaItem;
-      setMedia(updatedMedia);
+    if (currentMedia.id !== undefined) {
+      await updateMedia(currentMedia.id, currentMedia.title, currentMedia.type, currentMedia.url);
     } else {
-      setMedia([...media, newMediaItem]);
+      await addMedia(currentMedia.title, currentMedia.type, currentMedia.url);
     }
     
+    await loadContent();
     setIsMediaDialogOpen(false);
     setCurrentMedia(null);
   }
@@ -143,12 +143,12 @@ export default function ContentPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {faqs.map((faq, index) => (
-                        <TableRow key={index}>
+                    {faqs.map((faq) => (
+                        <TableRow key={faq.id}>
                             <TableCell className="font-medium">{faq.question}</TableCell>
                             <TableCell className="text-muted-foreground">{faq.answer}</TableCell>
                             <TableCell className="text-right">
-                                <Button variant="ghost" size="sm" onClick={() => handleOpenFaqDialog(faq, index)}>Edit</Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleOpenFaqDialog(faq)}>Edit</Button>
                             </TableCell>
                         </TableRow>
                     ))}
@@ -227,15 +227,15 @@ export default function ContentPage() {
                         <TableCell colSpan={4} className="text-center h-24">No media content yet.</TableCell>
                     </TableRow>
                 )}
-                {media.map((item, index) => (
-                  <TableRow key={index}>
+                {media.map((item) => (
+                  <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.title}</TableCell>
                     <TableCell className="capitalize">{item.type}</TableCell>
                     <TableCell className="text-muted-foreground truncate max-w-xs">
                         <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.url}</a>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleOpenMediaDialog(item, index)}>Edit</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleOpenMediaDialog(item)}>Edit</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -265,9 +265,9 @@ export default function ContentPage() {
     <Dialog open={isFaqDialogOpen} onOpenChange={setIsFaqDialogOpen}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{currentFaq?.index !== undefined ? 'Edit FAQ' : 'Add New FAQ'}</DialogTitle>
+          <DialogTitle>{currentFaq?.id !== undefined ? 'Edit FAQ' : 'Add New FAQ'}</DialogTitle>
           <DialogDescription>
-            {currentFaq?.index !== undefined ? 'Update the question and answer.' : 'Enter a new question and its corresponding answer.'}
+            {currentFaq?.id !== undefined ? 'Update the question and answer.' : 'Enter a new question and its corresponding answer.'}
           </DialogDescription>
         </DialogHeader>
         {currentFaq && (
@@ -343,9 +343,9 @@ export default function ContentPage() {
     <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-                <DialogTitle>{currentMedia?.index !== undefined ? 'Edit Media' : 'Add New Media'}</DialogTitle>
+                <DialogTitle>{currentMedia?.id !== undefined ? 'Edit Media' : 'Add New Media'}</DialogTitle>
                 <DialogDescription>
-                    {currentMedia?.index !== undefined ? 'Update this media item.' : 'Add a new video, image, or reel link.'}
+                    {currentMedia?.id !== undefined ? 'Update this media item.' : 'Add a new video, image, or reel link.'}
                 </DialogDescription>
             </DialogHeader>
             {currentMedia && (
@@ -395,5 +395,3 @@ export default function ContentPage() {
     </>
   );
 }
-
-    

@@ -1,15 +1,16 @@
+
 'use server';
 
 import { generatePinCodeExplanation } from '@/ai/flows/generate-pin-code-explanation';
 import { summarizeFAQ } from '@/ai/flows/summarize-faq';
-import { faqs, pinCodeData } from '@/lib/data';
+import { getDb } from '@/lib/db';
 import { tellJoke } from '@/ai/flows/tell-joke';
 
 const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
 const jokeRegex = /joke/i;
 
 export async function handleUserMessage(message: string): Promise<string> {
-  const pinCodeMatch = message.match(pinCodeRegex);
+  const db = await getDb();
   const jokeMatch = message.match(jokeRegex);
 
   if (jokeMatch) {
@@ -21,19 +22,20 @@ export async function handleUserMessage(message: string): Promise<string> {
       return "Sorry, I couldn't think of a joke right now. Please try again later.";
     }
   }
-  
+
+  const pinCodeMatch = message.match(pinCodeRegex);
   if (pinCodeMatch) {
     const pinCode = pinCodeMatch[0];
-    const villageInfo = pinCodeData[pinCode];
+    const villageInfo = await db.get('SELECT info FROM pincodes WHERE pincode = ?', pinCode);
 
     if (villageInfo) {
       try {
         const result = await generatePinCodeExplanation({
           pinCode,
-          villageInformation: villageInfo,
+          villageInformation: villageInfo.info,
         });
         return result.explanation;
-      } catch (error) {
+      } catch (error)        {
         console.error('Error calling generatePinCodeExplanation:', error);
         return 'Sorry, I had trouble getting information for that PIN code. Please try again later.';
       }
@@ -44,6 +46,7 @@ export async function handleUserMessage(message: string): Promise<string> {
   }
 
   try {
+    const faqs = await db.all('SELECT question, answer FROM faqs');
     const faqEntriesString = faqs
       .map(faq => `Q: ${faq.question}\nA: ${faq.answer}`)
       .join('\n\n');
