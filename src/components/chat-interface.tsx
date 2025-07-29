@@ -31,6 +31,12 @@ export function ChatInterface() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    if (!isPending) {
+      inputRef.current?.focus();
+    }
+  }, [isPending]);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!input.trim() || isPending) return;
@@ -54,8 +60,6 @@ export function ChatInterface() {
           content: "An unexpected error occurred. Please try again."
         };
         setMessages((prev) => prev.map(msg => msg.id === errorMessage.id ? errorMessage : msg));
-      } finally {
-        inputRef.current?.focus();
       }
     });
   };
