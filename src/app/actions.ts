@@ -3,12 +3,25 @@
 import { generatePinCodeExplanation } from '@/ai/flows/generate-pin-code-explanation';
 import { summarizeFAQ } from '@/ai/flows/summarize-faq';
 import { faqs, pinCodeData } from '@/lib/data';
+import { tellJoke } from '@/ai/flows/tell-joke';
 
 const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
+const jokeRegex = /joke/i;
 
 export async function handleUserMessage(message: string): Promise<string> {
   const pinCodeMatch = message.match(pinCodeRegex);
+  const jokeMatch = message.match(jokeRegex);
 
+  if (jokeMatch) {
+    try {
+      const result = await tellJoke();
+      return result.joke;
+    } catch (error) {
+      console.error('Error calling tellJoke:', error);
+      return "Sorry, I couldn't think of a joke right now. Please try again later.";
+    }
+  }
+  
   if (pinCodeMatch) {
     const pinCode = pinCodeMatch[0];
     const villageInfo = pinCodeData[pinCode];
