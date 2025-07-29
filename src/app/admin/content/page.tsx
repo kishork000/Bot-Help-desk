@@ -12,18 +12,16 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredConversations, deleteUnansweredConversation } from "@/lib/db";
-import { PlusCircle, MessageSquarePlus, Trash2 } from "lucide-react";
+import { PlusCircle, MessageSquarePlus, Trash2, MoreHorizontal } from "lucide-react";
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type FaqItem = { id: number; question: string; answer: string; };
 type PinCodeData = Record<string, string>;
 type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; url: string; };
 type UnansweredQuery = { id: number, query: string, answer: string | null, timestamp: string };
-
-const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
-const mediaRegex = /\b(video|image|reel|photo|picture)\b/i;
 
 export default function ContentPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
@@ -76,7 +74,7 @@ export default function ContentPage() {
     if (pincode && info !== null) {
       setCurrentPinCode({ pincode, info, isEditing: true });
     } else {
-      setCurrentPinCode({ pincode: '', info: '', isEditing: false });
+      setCurrentPinCode({ pincode: pincode || '', info: info || '', isEditing: false });
     }
     setIsPinCodeDialogOpen(true);
   };
@@ -95,8 +93,8 @@ export default function ContentPage() {
     setCurrentPinCode(null);
   };
 
-  const handleOpenMediaDialog = (mediaItem: Partial<MediaItem> | null = null) => {
-    setCurrentMedia(mediaItem ? { ...mediaItem } : { title: '', type: 'video', url: '' });
+  const handleOpenMediaDialog = (mediaItem: Partial<MediaItem> | null = null, query: string = '') => {
+    setCurrentMedia(mediaItem ? { ...mediaItem } : { title: query, type: 'video', url: '' });
     setIsMediaDialogOpen(true);
   };
 
@@ -113,20 +111,6 @@ export default function ContentPage() {
     setIsMediaDialogOpen(false);
     setCurrentMedia(null);
   }
-
-  const handleCreateKnowledgeFromQuery = async (query: UnansweredQuery) => {
-    const pinCodeMatch = query.query.match(pinCodeRegex);
-    const mediaMatch = query.query.match(mediaRegex);
-
-    if (pinCodeMatch && query.answer) {
-        const pinCode = pinCodeMatch[0];
-        handleOpenPinCodeDialog(pinCode, query.answer);
-    } else if (mediaMatch) {
-        handleOpenMediaDialog({ title: query.query, type: 'video', url: '' });
-    } else {
-        handleOpenFaqDialog(null, query.query, query.answer || '');
-    }
-  };
 
   const handleDeleteQuery = async (id: number) => {
       await deleteUnansweredConversation(id);
@@ -323,9 +307,29 @@ export default function ContentPage() {
                         {format(new Date(query.timestamp), "PPP p")}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleCreateKnowledgeFromQuery(query)}>
-                           <MessageSquarePlus className="mr-2 h-4 w-4" /> Add to Knowledge
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onSelect={() => handleOpenFaqDialog(null, query.query, query.answer || '')}>
+                                <MessageSquarePlus className="mr-2 h-4 w-4"/>
+                                Add to FAQs
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleOpenPinCodeDialog(query.query, query.answer || '')}>
+                                <MessageSquarePlus className="mr-2 h-4 w-4"/>
+                                Add to PIN Codes
+                            </DropdownMenuItem>
+                             <DropdownMenuItem onSelect={() => handleOpenMediaDialog(null, query.query)}>
+                                <MessageSquarePlus className="mr-2 h-4 w-4"/>
+                                Add to Media
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteQuery(query.id)}>
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">Delete</span>
