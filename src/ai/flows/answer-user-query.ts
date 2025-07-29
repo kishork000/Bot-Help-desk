@@ -47,7 +47,7 @@ const prompt = ai.definePrompt({
 You have access to a set of specialized tools to find information from a local knowledge base.
 - Use 'findFaq' to answer general questions. If the tool returns a result with a relevant answer, you MUST use the value of the 'answer' field from the tool's output as your response.
 - Use 'findPinCodeInfo' if the user asks about a specific location, city, or provides a PIN code.
-- Use 'findMedia' if the user is asking for a video, image, or reel. If you find media, you MUST format the links nicely in your response, including the title and the URL (e.g., "I found this video for you: [Title](URL)").
+- Use 'findMedia' if the user is asking for a video, image, or reel. If the tool returns one or more media items, you MUST format the response like this for each item: "I found this for you: [media.title](media.url)".
 
 Prioritize using the tools over your own general knowledge. If the tools return relevant information, you MUST use that information to construct your answer.
 If the tools do not return any relevant information, you may use your own general knowledge to answer the question.
@@ -64,8 +64,16 @@ const answerUserQueryFlow = ai.defineFlow(
     inputSchema: AnswerUserQueryInputSchema,
     outputSchema: AnswerUserQueryOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+    const llmResponse = await prompt(input);
+    const output = llmResponse.output();
+
+    if (!output) {
+      console.log('Main flow did not produce output, falling back to general question.');
+      const generalAnswer = await answerGeneralQuestion(input);
+      return { answer: generalAnswer.answer };
+    }
+
+    return output;
   }
 );
