@@ -1,0 +1,121 @@
+
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { faqs, pinCodeData } from "@/lib/data";
+import { PlusCircle } from "lucide-react";
+
+export default function ContentPage() {
+  return (
+    <Tabs defaultValue="faq">
+      <div className="flex justify-between items-start">
+        <div>
+            <h2 className="text-2xl font-bold">Content Management</h2>
+            <p className="text-muted-foreground">Manage your chatbot's knowledge base.</p>
+        </div>
+        <TabsList>
+          <TabsTrigger value="faq">FAQs</TabsTrigger>
+          <TabsTrigger value="pincodes">PIN Codes</TabsTrigger>
+          <TabsTrigger value="scripts">Scripts</TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="faq" className="mt-6">
+        <Card>
+          <CardHeader className="flex flex-row justify-between items-start">
+            <div>
+              <CardTitle>Frequently Asked Questions</CardTitle>
+              <CardDescription>
+                Add, edit, or remove FAQs to train your chatbot.
+              </CardDescription>
+            </div>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add FAQ
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[40%]">Question</TableHead>
+                        <TableHead>Answer</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {faqs.map((faq, index) => (
+                        <TableRow key={index}>
+                            <TableCell className="font-medium">{faq.question}</TableCell>
+                            <TableCell className="text-muted-foreground">{faq.answer}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="sm">Edit</Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="pincodes" className="mt-6">
+         <Card>
+          <CardHeader className="flex flex-row justify-between items-start">
+            <div>
+              <CardTitle>PIN Code Information</CardTitle>
+              <CardDescription>
+                Manage the information associated with different PIN codes.
+              </CardDescription>
+            </div>
+             <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add PIN Code
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>PIN Code</TableHead>
+                        <TableHead>Information</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {Object.entries(pinCodeData).map(([pincode, info]) => (
+                        <TableRow key={pincode}>
+                            <TableCell className="font-medium">{pincode}</TableCell>
+                            <TableCell className="text-muted-foreground">{info}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="sm">Edit</Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="scripts" className="mt-6">
+        <Card>
+            <CardHeader>
+                <CardTitle>Custom Scripts</CardTitle>
+                <CardDescription>
+                Manage custom scripts and advanced chatbot responses. (Coming soon)
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="text-center text-muted-foreground py-12">
+                    <p>This section is under construction.</p>
+                </div>
+            </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  );
+}
