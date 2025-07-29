@@ -20,6 +20,7 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [isPending, startTransition] = useTransition();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -53,6 +54,8 @@ export function ChatInterface() {
           content: "An unexpected error occurred. Please try again."
         };
         setMessages((prev) => prev.map(msg => msg.id === errorMessage.id ? errorMessage : msg));
+      } finally {
+        inputRef.current?.focus();
       }
     });
   };
@@ -75,6 +78,7 @@ export function ChatInterface() {
       <CardFooter className="p-4 border-t bg-card">
         <form onSubmit={handleSubmit} className="flex w-full items-center space-x-2">
           <Input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about services or enter a PIN code..."
