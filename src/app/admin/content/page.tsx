@@ -395,7 +395,7 @@ export default function ContentPage() {
                 <CardDescription>
                 Manage custom scripts and advanced chatbot responses. (Coming soon)
                 </CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent>
                 <div className="text-center text-muted-foreground py-12">
                     <p>This section is under construction.</p>
