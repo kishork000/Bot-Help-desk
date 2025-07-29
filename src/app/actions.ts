@@ -3,7 +3,7 @@
 
 import { generatePinCodeExplanation } from '@/ai/flows/generate-pin-code-explanation';
 import { summarizeFAQ } from '@/ai/flows/summarize-faq';
-import { getDb } from '@/lib/db';
+import { addUnansweredQuery, getDb } from '@/lib/db';
 import { tellJoke } from '@/ai/flows/tell-joke';
 
 const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
@@ -40,7 +40,7 @@ export async function handleUserMessage(message: string): Promise<string> {
         return 'Sorry, I had trouble getting information for that PIN code. Please try again later.';
       }
     } else {
-      console.log(`Unknown PIN code query: ${pinCode}`); // Query Logging
+      await addUnansweredQuery(`PIN code: ${pinCode}`);
       return `I don't have information for the PIN code ${pinCode}. I've logged this for future improvement.`;
     }
   }
@@ -55,11 +55,18 @@ export async function handleUserMessage(message: string): Promise<string> {
       query: message,
       faqEntries: faqEntriesString,
     });
+
+    // A bit of a heuristic: if the summary is very short, it might not be a good answer.
+    // A more robust solution would be to have the Genkit flow return a confidence score.
+    if (result.summary.length < 20 || !result.summary.includes(' ')) {
+        await addUnansweredQuery(message);
+        return "I couldn't find a specific answer for your question in my knowledge base. I've logged it for review. Is there anything else I can help with?";
+    }
+
     return result.summary;
   } catch (error) {
     console.error('Error calling summarizeFAQ:', error);
-    // Log the user's message when the chatbot can't find an answer
-    console.log(`Unanswered query: ${message}`);
+    await addUnansweredQuery(message);
     return "I couldn't find a specific answer for your question. I've logged it for review. Is there anything else I can help with?";
   }
 }

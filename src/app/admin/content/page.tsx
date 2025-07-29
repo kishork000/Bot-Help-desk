@@ -11,17 +11,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia } from "@/lib/db";
-import { PlusCircle } from "lucide-react";
+import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredQueries, deleteUnansweredQuery } from "@/lib/db";
+import { PlusCircle, MessageSquarePlus, Trash2 } from "lucide-react";
+import { format } from 'date-fns';
 
 type FaqItem = { id: number; question: string; answer: string; };
 type PinCodeData = Record<string, string>;
 type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; url: string; };
+type UnansweredQuery = { id: number, query: string, timestamp: string };
 
 export default function ContentPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [pinCodeData, setPinCodeData] = useState<PinCodeData>({});
   const [media, setMedia] = useState<MediaItem[]>([]);
+  const [unansweredQueries, setUnansweredQueries] = useState<UnansweredQuery[]>([]);
 
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false);
   const [currentFaq, setCurrentFaq] = useState<{ id?: number, question: string, answer: string } | null>(null);
@@ -36,14 +39,15 @@ export default function ContentPage() {
       setFaqs(await getFaqs());
       setPinCodeData(await getPinCodes());
       setMedia(await getMedia());
+      setUnansweredQueries(await getUnansweredQueries());
   }
 
   useEffect(() => {
     loadContent();
   }, []);
 
-  const handleOpenFaqDialog = (faq: FaqItem | null = null) => {
-    setCurrentFaq(faq ? { ...faq } : { question: '', answer: '' });
+  const handleOpenFaqDialog = (faq: FaqItem | null = null, question: string = '') => {
+    setCurrentFaq(faq ? { ...faq } : { question: question, answer: '' });
     setIsFaqDialogOpen(true);
   };
 
@@ -103,6 +107,18 @@ export default function ContentPage() {
     setCurrentMedia(null);
   }
 
+  const handleCreateFaqFromQuery = async (query: UnansweredQuery) => {
+    handleOpenFaqDialog(null, query.query);
+    await deleteUnansweredQuery(query.id);
+    await loadContent();
+  };
+
+  const handleDeleteQuery = async (id: number) => {
+      await deleteUnansweredQuery(id);
+      await loadContent();
+  }
+
+
   return (
     <>
     <Tabs defaultValue="faq">
@@ -114,6 +130,7 @@ export default function ContentPage() {
         <TabsList>
           <TabsTrigger value="faq">FAQs</TabsTrigger>
           <TabsTrigger value="pincodes">PIN Codes</TabsTrigger>
+          <TabsTrigger value="unanswered">Unanswered Queries</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="scripts">Scripts</TabsTrigger>
         </TabsList>
@@ -192,6 +209,55 @@ export default function ContentPage() {
                         </TableRow>
                     ))}
                 </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="unanswered" className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Unanswered Queries</CardTitle>
+            <CardDescription>
+              Review questions your users asked that the chatbot couldn't answer.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[60%]">Query</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {unansweredQueries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center">
+                      No unanswered queries yet. Good job!
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  unansweredQueries.map((query) => (
+                    <TableRow key={query.id}>
+                      <TableCell className="font-medium">{query.query}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(new Date(query.timestamp), "PPP p")}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => handleCreateFaqFromQuery(query)}>
+                           <MessageSquarePlus className="mr-2 h-4 w-4" /> Add to FAQs
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteQuery(query.id)}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
             </Table>
           </CardContent>
         </Card>

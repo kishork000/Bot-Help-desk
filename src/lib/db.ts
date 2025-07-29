@@ -31,6 +31,12 @@ async function initializeDatabase() {
             type TEXT NOT NULL CHECK(type IN ('video', 'image', 'reel')),
             url TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS unanswered_queries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            query TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     `);
     
     // Seed initial data if tables are empty
@@ -112,4 +118,20 @@ export async function addMedia(title: string, type: 'video' | 'image' | 'reel', 
 export async function updateMedia(id: number, title: string, type: 'video' | 'image' | 'reel', url: string) {
     const db = await getDb();
     return db.run('UPDATE media SET title = ?, type = ?, url = ? WHERE id = ?', title, type, url, id);
+}
+
+// --- Unanswered Queries Management ---
+export async function getUnansweredQueries() {
+    const db = await getDb();
+    return db.all('SELECT id, query, timestamp FROM unanswered_queries ORDER BY timestamp DESC');
+}
+
+export async function addUnansweredQuery(query: string) {
+    const db = await getDb();
+    return db.run('INSERT INTO unanswered_queries (query) VALUES (?)', query);
+}
+
+export async function deleteUnansweredQuery(id: number) {
+    const db = await getDb();
+    return db.run('DELETE FROM unanswered_queries WHERE id = ?', id);
 }
