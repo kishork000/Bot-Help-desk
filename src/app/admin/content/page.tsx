@@ -39,12 +39,18 @@ export default function ContentPage() {
     if (!currentFaq) return;
 
     // In a real app, you would call an API to save this data.
+    // For now, we update the state which is read by the chatbot.
     if (currentFaq.index !== undefined) {
       const updatedFaqs = [...faqs];
       updatedFaqs[currentFaq.index] = { question: currentFaq.question, answer: currentFaq.answer };
       setFaqs(updatedFaqs);
+      // This is where you would also update the master data in a real DB
+      initialFaqs[currentFaq.index] = { question: currentFaq.question, answer: currentFaq.answer };
     } else {
-      setFaqs([...faqs, { question: currentFaq.question, answer: currentFaq.answer }]);
+      const newFaq = { question: currentFaq.question, answer: currentFaq.answer };
+      setFaqs([...faqs, newFaq]);
+      // This is where you would also update the master data in a real DB
+      initialFaqs.push(newFaq);
     }
     
     setIsFaqDialogOpen(false);
@@ -63,11 +69,13 @@ export default function ContentPage() {
   const handleSavePinCode = () => {
     if (!currentPinCode) return;
 
-    // In a real app, you would call an API to save this data.
-    setPinCodeData(prev => ({
-      ...prev,
+    const newPinCodeData = {
+      ...pinCodeData,
       [currentPinCode.pincode]: currentPinCode.info
-    }));
+    };
+    setPinCodeData(newPinCodeData);
+    // This is where you would also update the master data in a real DB
+    initialPinCodeData[currentPinCode.pincode] = currentPinCode.info;
 
     setIsPinCodeDialogOpen(false);
     setCurrentPinCode(null);
@@ -387,3 +395,5 @@ export default function ContentPage() {
     </>
   );
 }
+
+    
