@@ -99,8 +99,9 @@ export async function updateFaq(id: number, question: string, answer: string) {
 
 export async function searchFaqs(query: string) {
     const db = await getDb();
+    // Use OR logic to be less restrictive
     const searchTerms = query.split(' ').map(term => `%${term}%`);
-    const whereClauses = searchTerms.map(() => '(question LIKE ? OR answer LIKE ?)').join(' AND ');
+    const whereClauses = searchTerms.map(() => '(question LIKE ? OR answer LIKE ?)').join(' OR ');
     const sql = `SELECT question, answer FROM faqs WHERE ${whereClauses}`;
     const params = searchTerms.flatMap(term => [term, term]);
     return db.all(sql, ...params);
@@ -156,7 +157,7 @@ export async function searchMedia(query: string) {
     const searchTerms = query.split(' ').filter(term => term.length > 2).map(term => `%${term}%`);
     if (searchTerms.length === 0) return [];
     
-    const whereClauses = searchTerms.map(() => '(title LIKE ? OR url LIKE ?)').join(' AND ');
+    const whereClauses = searchTerms.map(() => '(title LIKE ? OR url LIKE ?)').join(' OR ');
     const sql = `SELECT id, title, type, url FROM media WHERE ${whereClauses}`;
     const params = searchTerms.flatMap(term => [term, term]);
 
