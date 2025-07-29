@@ -36,11 +36,11 @@ export async function handleUserMessage(message: string): Promise<string> {
       return result.answer;
     }
 
-    // Heuristic: If the answer is very short or seems like a refusal, it might have failed.
+    // Heuristic: If the answer seems like a refusal, it might have failed.
     // Let's fallback to the general knowledge flow.
     const isRefusal = /don't know|cannot answer|unable to find/i.test(result.answer);
-    if (result.answer.length < 25 && isRefusal) {
-       throw new Error("Answer from tools was insufficient, fallback to general knowledge.");
+    if (isRefusal) {
+       throw new Error("Answer from tools was a refusal, fallback to general knowledge.");
     }
 
     // Return just the answer string from the structured response.
