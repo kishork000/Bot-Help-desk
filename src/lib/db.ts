@@ -122,10 +122,18 @@ export async function updateMedia(id: number, title: string, type: 'video' | 'im
 
 export async function searchMedia(query: string) {
     const db = await getDb();
-    // Using LIKE to find media with titles or URLs that contain the query string
-    const searchTerm = `%${query}%`;
-    return db.all("SELECT id, title, type, url FROM media WHERE title LIKE ? OR url LIKE ?", searchTerm, searchTerm);
+    const searchTerms = query.split(' ').map(term => `%${term}%`);
+    
+    // Build a query with a LIKE clause for each search term
+    const whereClauses = searchTerms.map(() => '(title LIKE ? OR url LIKE ?)').join(' AND ');
+    const sql = `SELECT id, title, type, url FROM media WHERE ${whereClauses}`;
+    
+    // Flatten the search terms for the query parameters
+    const params = searchTerms.flatMap(term => [term, term]);
+    
+    return db.all(sql, ...params);
 }
+
 
 // --- Unanswered Queries Management ---
 export async function getUnansweredQueries() {

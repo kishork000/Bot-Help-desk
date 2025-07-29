@@ -37,7 +37,7 @@ const prompt = ai.definePrompt({
 
 If the user asks for media content like a video, image, or reel, you MUST use the findMedia tool to search for it.
 If the tool returns results, format them nicely for the user, including the title and the URL.
-If the tool returns no results, inform the user that you couldn't find any media on that topic.
+If the tool returns no results, you MUST inform the user that you couldn't find any media on that topic.
 
 For all other questions, find the most relevant FAQ entry and summarize the answer for the user.
 If no FAQ entry matches the user's query, state that you couldn't find an answer.

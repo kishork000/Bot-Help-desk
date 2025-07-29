@@ -30,6 +30,8 @@ export const findMediaTool = ai.defineTool(
   },
   async (input) => {
     console.log(`Searching for media with query: ${input.query}`);
-    return await searchMedia(input.query);
+    const results = await searchMedia(input.query);
+    console.log(`Found ${results.length} media items.`);
+    return results;
   }
 );
