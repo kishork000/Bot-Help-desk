@@ -41,6 +41,7 @@ const prompt = ai.definePrompt({
   input: {schema: AnswerUserQueryInputSchema},
   output: {schema: AnswerUserQueryOutputSchema},
   tools: [findFaqTool, findPinCodeInfoTool, findMediaTool],
+  model: 'googleai/gemini-2.0-flash',
   prompt: `You are a helpful AI assistant. Your primary goal is to answer the user's question as accurately as possible.
 
 You have access to a set of specialized tools to find information from a local knowledge base.
@@ -65,14 +66,6 @@ const answerUserQueryFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    
-    // If the primary prompt fails or returns no output, fallback to the general question flow.
-    if (!output) {
-        console.log("Primary prompt failed. Falling back to general knowledge.");
-        const fallbackResult = await answerGeneralQuestion(input);
-        return { answer: fallbackResult.answer };
-    }
-
-    return output;
+    return output!;
   }
 );
