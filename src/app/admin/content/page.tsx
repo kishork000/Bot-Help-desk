@@ -21,6 +21,8 @@ type PinCodeData = Record<string, string>;
 type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; url: string; };
 type UnansweredQuery = { id: number, query: string, answer: string | null, timestamp: string };
 
+const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
+
 export default function ContentPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [pinCodeData, setPinCodeData] = useState<PinCodeData>({});
@@ -69,7 +71,7 @@ export default function ContentPage() {
   };
 
   const handleOpenPinCodeDialog = (pincode: string | null = null, info: string | null = null) => {
-    if (pincode && info) {
+    if (pincode && info !== null) {
       setCurrentPinCode({ pincode, info, isEditing: true });
     } else {
       setCurrentPinCode({ pincode: '', info: '', isEditing: false });
@@ -110,8 +112,15 @@ export default function ContentPage() {
     setCurrentMedia(null);
   }
 
-  const handleCreateFaqFromQuery = async (query: UnansweredQuery) => {
-    handleOpenFaqDialog(null, query.query, query.answer || '');
+  const handleCreateKnowledgeFromQuery = async (query: UnansweredQuery) => {
+    const pinCodeMatch = query.query.match(pinCodeRegex);
+
+    if (pinCodeMatch && query.answer) {
+        const pinCode = pinCodeMatch[0];
+        handleOpenPinCodeDialog(pinCode, query.answer);
+    } else {
+        handleOpenFaqDialog(null, query.query, query.answer || '');
+    }
   };
 
   const handleDeleteQuery = async (id: number) => {
@@ -145,6 +154,7 @@ export default function ContentPage() {
   }
 
   const handleDeleteSelectedQueries = async () => {
+    if (selectedQueries.size === 0) return;
     await Promise.all(Array.from(selectedQueries).map(id => deleteUnansweredConversation(id)));
     await loadContent();
     setSelectedQueries(new Set());
@@ -308,8 +318,8 @@ export default function ContentPage() {
                         {format(new Date(query.timestamp), "PPP p")}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleCreateFaqFromQuery(query)}>
-                           <MessageSquarePlus className="mr-2 h-4 w-4" /> Add to FAQs
+                        <Button variant="outline" size="sm" onClick={() => handleCreateKnowledgeFromQuery(query)}>
+                           <MessageSquarePlus className="mr-2 h-4 w-4" /> Add to Knowledge
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteQuery(query.id)}>
                             <Trash2 className="h-4 w-4" />
@@ -523,3 +533,5 @@ export default function ContentPage() {
     </>
   );
 }
+
+    
