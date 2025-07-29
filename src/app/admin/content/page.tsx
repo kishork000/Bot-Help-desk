@@ -7,21 +7,28 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { faqs as initialFaqs, pinCodeData as initialPinCodeData } from "@/lib/data";
 import { PlusCircle } from "lucide-react";
 
+type MediaItem = { title: string; type: 'video' | 'image' | 'reel'; url: string; index?: number };
+
 export default function ContentPage() {
   const [faqs, setFaqs] = useState(initialFaqs);
   const [pinCodeData, setPinCodeData] = useState(initialPinCodeData);
-  
+  const [media, setMedia] = useState<Omit<MediaItem, 'index'>[]>([]);
+
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false);
   const [currentFaq, setCurrentFaq] = useState<{ question: string, answer: string, index?: number } | null>(null);
 
   const [isPinCodeDialogOpen, setIsPinCodeDialogOpen] = useState(false);
   const [currentPinCode, setCurrentPinCode] = useState<{ pincode: string, info: string, isEditing: boolean } | null>(null);
+
+  const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
+  const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
 
   const handleOpenFaqDialog = (faq: { question: string, answer: string } | null = null, index: number | undefined = undefined) => {
     setCurrentFaq(faq ? { ...faq, index } : { question: '', answer: '' });
@@ -66,6 +73,28 @@ export default function ContentPage() {
     setCurrentPinCode(null);
   };
 
+  const handleOpenMediaDialog = (mediaItem: Omit<MediaItem, 'index'> | null = null, index: number | undefined = undefined) => {
+    setCurrentMedia(mediaItem ? { ...mediaItem, index } : { title: '', type: 'video', url: '' });
+    setIsMediaDialogOpen(true);
+  };
+
+  const handleSaveMedia = () => {
+    if (!currentMedia) return;
+    
+    const { index, ...newMediaItem } = currentMedia;
+
+    if (index !== undefined) {
+      const updatedMedia = [...media];
+      updatedMedia[index] = newMediaItem;
+      setMedia(updatedMedia);
+    } else {
+      setMedia([...media, newMediaItem]);
+    }
+    
+    setIsMediaDialogOpen(false);
+    setCurrentMedia(null);
+  }
+
   return (
     <>
     <Tabs defaultValue="faq">
@@ -77,6 +106,7 @@ export default function ContentPage() {
         <TabsList>
           <TabsTrigger value="faq">FAQs</TabsTrigger>
           <TabsTrigger value="pincodes">PIN Codes</TabsTrigger>
+          <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="scripts">Scripts</TabsTrigger>
         </TabsList>
       </div>
@@ -158,6 +188,54 @@ export default function ContentPage() {
           </CardContent>
         </Card>
       </TabsContent>
+        
+      <TabsContent value="media" className="mt-6">
+        <Card>
+          <CardHeader className="flex flex-row justify-between items-start">
+            <div>
+              <CardTitle>Media Content</CardTitle>
+              <CardDescription>
+                Manage links to videos, images, and reels.
+              </CardDescription>
+            </div>
+            <Button onClick={() => handleOpenMediaDialog()}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Media
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>URL</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {media.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center h-24">No media content yet.</TableCell>
+                    </TableRow>
+                )}
+                {media.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{item.title}</TableCell>
+                    <TableCell className="capitalize">{item.type}</TableCell>
+                    <TableCell className="text-muted-foreground truncate max-w-xs">
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.url}</a>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => handleOpenMediaDialog(item, index)}>Edit</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
       <TabsContent value="scripts" className="mt-6">
         <Card>
@@ -195,7 +273,7 @@ export default function ContentPage() {
                 placeholder="What is...?" 
               />
             </div>
-            <div className="grid gap-2">
+            <div className=".grid .gap-2">
               <Label htmlFor="answer">Answer</Label>
               <Textarea 
                 id="answer" 
@@ -250,6 +328,59 @@ export default function ContentPage() {
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsPinCodeDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleSavePinCode}>Save</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog open={isMediaDialogOpen} onOpenChange={setIsMediaDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+                <DialogTitle>{currentMedia?.index !== undefined ? 'Edit Media' : 'Add New Media'}</DialogTitle>
+                <DialogDescription>
+                    {currentMedia?.index !== undefined ? 'Update this media item.' : 'Add a new video, image, or reel link.'}
+                </DialogDescription>
+            </DialogHeader>
+            {currentMedia && (
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="media-title">Title</Label>
+                        <Input
+                            id="media-title"
+                            value={currentMedia.title}
+                            onChange={(e) => setCurrentMedia({ ...currentMedia, title: e.target.value })}
+                            placeholder="e.g., How to apply for a passport"
+                        />
+                    </div>
+                     <div className="grid gap-2">
+                        <Label htmlFor="media-type">Type</Label>
+                         <Select
+                            value={currentMedia.type}
+                            onValueChange={(value) => setCurrentMedia({ ...currentMedia, type: value as MediaItem['type'] })}
+                         >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="video">Video</SelectItem>
+                                <SelectItem value="image">Image</SelectItem>
+                                <SelectItem value="reel">Reel</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="media-url">URL</Label>
+                        <Input
+                            id="media-url"
+                            value={currentMedia.url}
+                            onChange={(e) => setCurrentMedia({ ...currentMedia, url: e.target.value })}
+                            placeholder="https://example.com/media.mp4"
+                        />
+                    </div>
+                </div>
+            )}
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsMediaDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveMedia}>Save</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
