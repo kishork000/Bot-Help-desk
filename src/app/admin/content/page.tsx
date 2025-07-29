@@ -12,11 +12,10 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredConversations, deleteUnansweredConversation } from "@/lib/db";
-import { PlusCircle, MessageSquarePlus, Trash2, MoreHorizontal, LinkIcon } from "lucide-react";
+import { PlusCircle, LinkIcon, Trash2 } from "lucide-react";
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type FaqItem = { id: number; question: string; answer: string; };
 type PinCodeData = Record<string, string>;
@@ -82,16 +81,24 @@ export default function ContentPage() {
   };
 
   const handleOpenPinCodeDialog = (pincode: string | null = null, info: string | null = null) => {
+    // Attempt to extract a 6-digit pincode from the query if it exists
+    const potentialPincode = (pincode || '').match(/\b\d{6}\b/);
+    const initialPincode = potentialPincode ? potentialPincode[0] : '';
+    const initialInfo = info || (pincode && !potentialPincode ? `Information about ${pincode}`: '');
+
     if (pincode && info !== null) {
       setCurrentPinCode({ pincode, info, isEditing: true });
     } else {
-      setCurrentPinCode({ pincode: pincode || '', info: info || '', isEditing: false });
+      setCurrentPinCode({ pincode: initialPincode, info: initialInfo, isEditing: false });
     }
     setIsPinCodeDialogOpen(true);
   };
 
   const handleSavePinCode = async () => {
-    if (!currentPinCode) return;
+    if (!currentPinCode || !currentPinCode.pincode || !currentPinCode.info) {
+        toast({ variant: 'destructive', title: 'Error', description: 'PIN Code and information cannot be empty.' });
+        return;
+    };
 
     if (currentPinCode.isEditing) {
         await updatePinCode(currentPinCode.pincode, currentPinCode.info);
@@ -110,7 +117,10 @@ export default function ContentPage() {
   };
 
   const handleSaveMedia = async () => {
-    if (!currentMedia || !currentMedia.title || !currentMedia.type || !currentMedia.url) return;
+    if (!currentMedia || !currentMedia.title || !currentMedia.type || !currentMedia.url) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Title, type, and URL are required.' });
+        return;
+    }
     
     if (currentMedia.id !== undefined) {
       await updateMedia(currentMedia.id, currentMedia.title, currentMedia.type, currentMedia.url);
@@ -173,26 +183,33 @@ export default function ContentPage() {
   const handleSaveCategorization = async () => {
     if (!currentCategorizeQuery) return;
     
-    // In the future, this is where we would save the links.
-    // For now, it will just close the dialog.
-    console.log("Saving categorization for:", currentCategorizeQuery.query, "with selections:", categorizeSelection);
+    // In the future, this is where we would save the links to influence the bot.
+    // For now, it opens the relevant dialogs to add the content.
     toast({
-        title: "Categorization Saved (Simulation)",
-        description: "In the next step, we will make the bot use this information.",
+        title: "Ready to Add Content",
+        description: "Opening the relevant dialogs for you to save.",
     });
 
     if(categorizeSelection.faq) {
+      // This will now open the Add FAQ dialog, pre-filled.
       handleOpenFaqDialog(null, currentCategorizeQuery.query, currentCategorizeQuery.answer || '');
     }
     if(categorizeSelection.pincode) {
-       handleOpenPinCodeDialog(currentCategorizeQuery.query, currentCategorizeQuery.answer || '');
+       // This will now open the Add PIN Code dialog, pre-filled.
+       handleOpenPinCodeDialog(currentCategorizeQuery.query, currentCategorizeQuery.answer);
     }
     if(categorizeSelection.media) {
+       // This will now open the Add Media dialog, pre-filled.
        handleOpenMediaDialog(null, currentCategorizeQuery.query);
     }
     // TODO: Handle script logic when available
 
     setIsCategorizeDialogOpen(false);
+    
+    // We can choose to delete the query now or let the user do it manually.
+    // Let's delete it to clean up the queue.
+    await deleteUnansweredConversation(currentCategorizeQuery.id);
+    await loadContent();
     setCurrentCategorizeQuery(null);
   };
 
@@ -451,7 +468,7 @@ export default function ContentPage() {
                 placeholder="What is...?" 
               />
             </div>
-            <div className=".grid .gap-2">
+            <div className="grid gap-2">
               <Label htmlFor="answer">Answer</Label>
               <Textarea 
                 id="answer" 
@@ -524,7 +541,7 @@ export default function ContentPage() {
                         <Label htmlFor="media-title">Title</Label>
                         <Input
                             id="media-title"
-                            value={currentMedia.title}
+                            value={currentMedia.title || ''}
                             onChange={(e) => setCurrentMedia({ ...currentMedia, title: e.target.value })}
                             placeholder="e.g., How to apply for a passport"
                         />
@@ -549,7 +566,7 @@ export default function ContentPage() {
                         <Label htmlFor="media-url">URL</Label>
                         <Input
                             id="media-url"
-                            value={currentMedia.url}
+                            value={currentMedia.url || ''}
                             onChange={(e) => setCurrentMedia({ ...currentMedia, url: e.target.value })}
                             placeholder="https://example.com/media.mp4"
                         />
