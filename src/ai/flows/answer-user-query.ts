@@ -42,10 +42,10 @@ const prompt = ai.definePrompt({
   tools: [findFaqTool, findPinCodeInfoTool, findMediaTool],
   prompt: `You are a helpful AI assistant. Your primary goal is to answer the user's question as accurately as possible.
 
-You have access to a set of tools to find information from a local knowledge base.
+You have access to a set of specialized tools to find information from a local knowledge base.
 - Use 'findFaq' to answer general questions. If the tool returns a result with a relevant answer, you MUST use the value of the 'answer' field from the tool's output as your response.
 - Use 'findPinCodeInfo' if the user asks about a specific location, city, or provides a PIN code.
-- Use 'findMedia' if the user is asking for a video, image, or reel. If you find media, you MUST format the links nicely in your response, including the title and the URL.
+- Use 'findMedia' if the user is asking for a video, image, or reel. If you find media, you MUST format the links nicely in your response, including the title and the URL (e.g., "I found this video for you: [Title](URL)").
 
 Prioritize using the tools over your own general knowledge. If the tools return relevant information, you MUST use that information to construct your answer.
 If the tools do not return any relevant information, you may use your own general knowledge to answer the question.

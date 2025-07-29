@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
   prompt: `You are a helpful chatbot. Your primary role is to answer user questions based on a provided list of FAQs.
 
 If the user asks for media content like a video, image, or reel, you MUST use the findMedia tool to search for it.
-If the tool returns results, you MUST format them nicely for the user, including the title and the URL.
+If the tool returns results, you MUST format them nicely for the user, including the title and the URL (e.g., "I found this video for you: [Title](URL)").
 If the tool returns no results, you MUST inform the user that you couldn't find any media on that topic.
 
 For all other questions, find the most relevant FAQ entry and summarize the answer for the user.
