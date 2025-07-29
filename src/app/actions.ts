@@ -42,6 +42,8 @@ export async function handleUserMessage(message: string): Promise<string> {
     return result.summary;
   } catch (error) {
     console.error('Error calling summarizeFAQ:', error);
-    return 'Sorry, I had trouble understanding your question. Could you please rephrase it?';
+    // Log the user's message when the chatbot can't find an answer
+    console.log(`Unanswered query: ${message}`);
+    return "I couldn't find a specific answer for your question. I've logged it for review. Is there anything else I can help with?";
   }
 }
