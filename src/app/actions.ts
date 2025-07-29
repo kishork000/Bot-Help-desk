@@ -29,20 +29,19 @@ export async function handleUserMessage(message: string): Promise<string> {
     const pinCode = pinCodeMatch[0];
     const villageInfo = await db.get('SELECT info FROM pincodes WHERE pincode = ?', pinCode);
 
-    if (villageInfo) {
-      try {
-        const result = await generatePinCodeExplanation({
-          pinCode,
-          villageInformation: villageInfo.info,
-        });
-        return result.explanation;
-      } catch (error)        {
-        console.error('Error calling generatePinCodeExplanation:', error);
-        return 'Sorry, I had trouble getting information for that PIN code. Please try again later.';
+    try {
+      const result = await generatePinCodeExplanation({
+        pinCode,
+        villageInformation: villageInfo?.info || 'No local information available.',
+      });
+      // If we didn't have local info, we save the AI's answer for review.
+      if (!villageInfo) {
+          await addUnansweredConversation(`PIN code: ${pinCode}`, result.explanation);
       }
-    } else {
-      await addUnansweredConversation( `PIN code: ${pinCode}`, 'No information found for this PIN code.');
-      return `I don't have information for the PIN code ${pinCode}. I've logged this for future improvement.`;
+      return result.explanation;
+    } catch (error) {
+      console.error('Error calling generatePinCodeExplanation:', error);
+      return 'Sorry, I had trouble getting information for that PIN code. Please try again later.';
     }
   }
 

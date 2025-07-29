@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredConversations, deleteUnansweredConversation } from "@/lib/db";
 import { PlusCircle, MessageSquarePlus, Trash2 } from "lucide-react";
 import { format } from 'date-fns';
+import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type FaqItem = { id: number; question: string; answer: string; };
 type PinCodeData = Record<string, string>;
@@ -24,6 +26,8 @@ export default function ContentPage() {
   const [pinCodeData, setPinCodeData] = useState<PinCodeData>({});
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [unansweredQueries, setUnansweredQueries] = useState<UnansweredQuery[]>([]);
+  const [selectedQueries, setSelectedQueries] = useState<Set<number>>(new Set());
+  const { toast } = useToast();
 
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false);
   const [currentFaq, setCurrentFaq] = useState<{ id?: number, question: string, answer: string } | null>(null);
@@ -108,13 +112,46 @@ export default function ContentPage() {
 
   const handleCreateFaqFromQuery = async (query: UnansweredQuery) => {
     handleOpenFaqDialog(null, query.query, query.answer || '');
-    await deleteUnansweredConversation(query.id);
-    await loadContent();
   };
 
   const handleDeleteQuery = async (id: number) => {
       await deleteUnansweredConversation(id);
       await loadContent();
+      setSelectedQueries(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+  }
+
+  const handleToggleSelectQuery = (id: number) => {
+    setSelectedQueries(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        return newSet;
+    });
+  }
+
+  const handleToggleSelectAllQueries = () => {
+    if (selectedQueries.size === unansweredQueries.length) {
+        setSelectedQueries(new Set());
+    } else {
+        setSelectedQueries(new Set(unansweredQueries.map(q => q.id)));
+    }
+  }
+
+  const handleDeleteSelectedQueries = async () => {
+    await Promise.all(Array.from(selectedQueries).map(id => deleteUnansweredConversation(id)));
+    await loadContent();
+    setSelectedQueries(new Set());
+    toast({
+        title: "Deleted",
+        description: `${selectedQueries.size} conversations have been deleted.`,
+    });
   }
 
 
@@ -216,17 +253,34 @@ export default function ContentPage() {
       <TabsContent value="unanswered" className="mt-6">
         <Card>
           <CardHeader>
-            <CardTitle>Unanswered Conversations</CardTitle>
-            <CardDescription>
-              Review questions your users asked that the chatbot couldn't answer, along with an AI-suggested answer.
-            </CardDescription>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle>Unanswered Conversations</CardTitle>
+                  <CardDescription>
+                    Review questions your users asked that the chatbot couldn't answer, along with an AI-suggested answer.
+                  </CardDescription>
+                </div>
+                {selectedQueries.size > 0 && (
+                     <Button variant="destructive" size="sm" onClick={handleDeleteSelectedQueries}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete ({selectedQueries.size})
+                    </Button>
+                )}
+              </div>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40%]">Query</TableHead>
-                  <TableHead className="w-[40%]">Suggested Answer</TableHead>
+                  <TableHead className="w-10">
+                    <Checkbox
+                        checked={selectedQueries.size === unansweredQueries.length && unansweredQueries.length > 0}
+                        onCheckedChange={handleToggleSelectAllQueries}
+                        aria-label="Select all"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[30%]">Query</TableHead>
+                  <TableHead className="w-[30%]">Suggested Answer</TableHead>
                   <TableHead>Timestamp</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -234,13 +288,20 @@ export default function ContentPage() {
               <TableBody>
                 {unansweredQueries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No unanswered queries yet. Good job!
                     </TableCell>
                   </TableRow>
                 ) : (
                   unansweredQueries.map((query) => (
-                    <TableRow key={query.id}>
+                    <TableRow key={query.id} data-state={selectedQueries.has(query.id) && "selected"}>
+                      <TableCell>
+                          <Checkbox
+                            checked={selectedQueries.has(query.id)}
+                            onCheckedChange={() => handleToggleSelectQuery(query.id)}
+                            aria-label={`Select query ${query.id}`}
+                          />
+                      </TableCell>
                       <TableCell className="font-medium">{query.query}</TableCell>
                       <TableCell className="text-muted-foreground">{query.answer}</TableCell>
                       <TableCell className="text-muted-foreground">
