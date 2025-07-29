@@ -1,15 +1,50 @@
 
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { faqs, pinCodeData } from "@/lib/data";
+import { Textarea } from "@/components/ui/textarea";
+import { faqs as initialFaqs, pinCodeData } from "@/lib/data";
 import { PlusCircle } from "lucide-react";
 
 export default function ContentPage() {
+  const [faqs, setFaqs] = useState(initialFaqs);
+  const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false);
+  const [currentFaq, setCurrentFaq] = useState<{ question: string, answer: string, index?: number } | null>(null);
+
+  const handleOpenFaqDialog = (faq: { question: string, answer: string } | null = null, index: number | undefined = undefined) => {
+    setCurrentFaq(faq ? { ...faq, index } : { question: '', answer: '' });
+    setIsFaqDialogOpen(true);
+  };
+
+  const handleSaveFaq = () => {
+    if (!currentFaq) return;
+
+    // In a real app, you would call an API to save this data.
+    // For now, we'll update the local state.
+    if (currentFaq.index !== undefined) {
+      // Editing existing FAQ
+      const updatedFaqs = [...faqs];
+      updatedFaqs[currentFaq.index] = { question: currentFaq.question, answer: currentFaq.answer };
+      setFaqs(updatedFaqs);
+    } else {
+      // Adding new FAQ
+      setFaqs([...faqs, { question: currentFaq.question, answer: currentFaq.answer }]);
+    }
+    
+    setIsFaqDialogOpen(false);
+    setCurrentFaq(null);
+  };
+
+
   return (
+    <>
     <Tabs defaultValue="faq">
       <div className="flex justify-between items-start">
         <div>
@@ -32,7 +67,7 @@ export default function ContentPage() {
                 Add, edit, or remove FAQs to train your chatbot.
               </CardDescription>
             </div>
-            <Button>
+            <Button onClick={() => handleOpenFaqDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add FAQ
             </Button>
@@ -52,7 +87,7 @@ export default function ContentPage() {
                             <TableCell className="font-medium">{faq.question}</TableCell>
                             <TableCell className="text-muted-foreground">{faq.answer}</TableCell>
                             <TableCell className="text-right">
-                                <Button variant="ghost" size="sm">Edit</Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleOpenFaqDialog(faq, index)}>Edit</Button>
                             </TableCell>
                         </TableRow>
                     ))}
@@ -117,5 +152,44 @@ export default function ContentPage() {
         </Card>
       </TabsContent>
     </Tabs>
+
+    <Dialog open={isFaqDialogOpen} onOpenChange={setIsFaqDialogOpen}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>{currentFaq?.index !== undefined ? 'Edit FAQ' : 'Add New FAQ'}</DialogTitle>
+          <DialogDescription>
+            {currentFaq?.index !== undefined ? 'Update the question and answer.' : 'Enter a new question and its corresponding answer.'}
+          </DialogDescription>
+        </DialogHeader>
+        {currentFaq && (
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="question">Question</Label>
+              <Input 
+                id="question" 
+                value={currentFaq.question}
+                onChange={(e) => setCurrentFaq({...currentFaq, question: e.target.value})}
+                placeholder="What is...?" 
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="answer">Answer</Label>
+              <Textarea 
+                id="answer" 
+                value={currentFaq.answer}
+                onChange={(e) => setCurrentFaq({...currentFaq, answer: e.target.value})}
+                placeholder="The answer is..."
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsFaqDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveFaq}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
