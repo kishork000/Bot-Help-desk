@@ -154,12 +154,21 @@ export async function updateMedia(id: number, title: string, type: 'video' | 'im
 
 export async function searchMedia(query: string) {
     const db = await getDb();
-    const searchTerms = query.split(' ').filter(term => term.length > 2).map(term => `%${term}%`);
-    if (searchTerms.length === 0) return [];
+    // A more robust search: look for the whole query and also individual terms.
+    const wholeQuery = `%${query}%`;
+    const searchTerms = query.split(' ').filter(term => term.length > 1).map(term => `%${term}%`);
     
-    const whereClauses = searchTerms.map(() => '(title LIKE ? OR url LIKE ?)').join(' OR ');
+    if (searchTerms.length === 0 && !query) {
+        return [];
+    }
+
+    const allTerms = [query, ...searchTerms];
+    const whereClauses = allTerms.map(() => '(title LIKE ? OR url LIKE ?)').join(' OR ');
+
     const sql = `SELECT id, title, type, url FROM media WHERE ${whereClauses}`;
-    const params = searchTerms.flatMap(term => [term, term]);
+    
+    // Create params array for all placeholders
+    const params = allTerms.flatMap(term => [`%${term}%`, `%${term}%`]);
 
     return db.all(sql, ...params);
 }
