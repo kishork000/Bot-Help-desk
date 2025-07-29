@@ -12,6 +12,7 @@ import {findMediaTool} from './find-media';
 import {findFaqTool} from './find-faq';
 import {findPinCodeInfoTool} from './find-pincode-info';
 import {tellJoke} from './tell-joke';
+import { answerGeneralQuestion } from './answer-general-question';
 
 const AnswerUserQueryInputSchema = z.object({
   query: z.string().describe("The user's question or message."),
@@ -64,6 +65,14 @@ const answerUserQueryFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    
+    // If the primary prompt fails or returns no output, fallback to the general question flow.
+    if (!output) {
+        console.log("Primary prompt failed. Falling back to general knowledge.");
+        const fallbackResult = await answerGeneralQuestion(input);
+        return { answer: fallbackResult.answer };
+    }
+
+    return output;
   }
 );
