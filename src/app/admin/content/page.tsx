@@ -10,13 +10,18 @@ import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { faqs as initialFaqs, pinCodeData } from "@/lib/data";
+import { faqs as initialFaqs, pinCodeData as initialPinCodeData } from "@/lib/data";
 import { PlusCircle } from "lucide-react";
 
 export default function ContentPage() {
   const [faqs, setFaqs] = useState(initialFaqs);
+  const [pinCodeData, setPinCodeData] = useState(initialPinCodeData);
+  
   const [isFaqDialogOpen, setIsFaqDialogOpen] = useState(false);
   const [currentFaq, setCurrentFaq] = useState<{ question: string, answer: string, index?: number } | null>(null);
+
+  const [isPinCodeDialogOpen, setIsPinCodeDialogOpen] = useState(false);
+  const [currentPinCode, setCurrentPinCode] = useState<{ pincode: string, info: string, isEditing: boolean } | null>(null);
 
   const handleOpenFaqDialog = (faq: { question: string, answer: string } | null = null, index: number | undefined = undefined) => {
     setCurrentFaq(faq ? { ...faq, index } : { question: '', answer: '' });
@@ -27,14 +32,11 @@ export default function ContentPage() {
     if (!currentFaq) return;
 
     // In a real app, you would call an API to save this data.
-    // For now, we'll update the local state.
     if (currentFaq.index !== undefined) {
-      // Editing existing FAQ
       const updatedFaqs = [...faqs];
       updatedFaqs[currentFaq.index] = { question: currentFaq.question, answer: currentFaq.answer };
       setFaqs(updatedFaqs);
     } else {
-      // Adding new FAQ
       setFaqs([...faqs, { question: currentFaq.question, answer: currentFaq.answer }]);
     }
     
@@ -42,6 +44,27 @@ export default function ContentPage() {
     setCurrentFaq(null);
   };
 
+  const handleOpenPinCodeDialog = (pincode: string | null = null, info: string | null = null) => {
+    if (pincode && info) {
+      setCurrentPinCode({ pincode, info, isEditing: true });
+    } else {
+      setCurrentPinCode({ pincode: '', info: '', isEditing: false });
+    }
+    setIsPinCodeDialogOpen(true);
+  };
+
+  const handleSavePinCode = () => {
+    if (!currentPinCode) return;
+
+    // In a real app, you would call an API to save this data.
+    setPinCodeData(prev => ({
+      ...prev,
+      [currentPinCode.pincode]: currentPinCode.info
+    }));
+
+    setIsPinCodeDialogOpen(false);
+    setCurrentPinCode(null);
+  };
 
   return (
     <>
@@ -106,7 +129,7 @@ export default function ContentPage() {
                 Manage the information associated with different PIN codes.
               </CardDescription>
             </div>
-             <Button>
+             <Button onClick={() => handleOpenPinCodeDialog()}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add PIN Code
             </Button>
@@ -126,7 +149,7 @@ export default function ContentPage() {
                             <TableCell className="font-medium">{pincode}</TableCell>
                             <TableCell className="text-muted-foreground">{info}</TableCell>
                             <TableCell className="text-right">
-                                <Button variant="ghost" size="sm">Edit</Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleOpenPinCodeDialog(pincode, info)}>Edit</Button>
                             </TableCell>
                         </TableRow>
                     ))}
@@ -189,6 +212,46 @@ export default function ContentPage() {
           <Button onClick={handleSaveFaq}>Save</Button>
         </DialogFooter>
       </DialogContent>
+    </Dialog>
+
+    <Dialog open={isPinCodeDialogOpen} onOpenChange={setIsPinCodeDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+                <DialogTitle>{currentPinCode?.isEditing ? 'Edit PIN Code' : 'Add New PIN Code'}</DialogTitle>
+                <DialogDescription>
+                    {currentPinCode?.isEditing ? 'Update the information for this PIN code.' : 'Enter a new PIN code and its associated information.'}
+                </DialogDescription>
+            </DialogHeader>
+            {currentPinCode && (
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="pincode">PIN Code</Label>
+                        <Input
+                            id="pincode"
+                            value={currentPinCode.pincode}
+                            onChange={(e) => setCurrentPinCode({ ...currentPinCode, pincode: e.target.value })}
+                            placeholder="e.g., 110001"
+                            disabled={currentPinCode.isEditing}
+                            maxLength={6}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="info">Information</Label>
+                        <Textarea
+                            id="info"
+                            value={currentPinCode.info}
+                            onChange={(e) => setCurrentPinCode({ ...currentPinCode, info: e.target.value })}
+                            placeholder="Historical, cultural, and geographical details..."
+                            className="min-h-[100px]"
+                        />
+                    </div>
+                </div>
+            )}
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsPinCodeDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSavePinCode}>Save</Button>
+            </DialogFooter>
+        </DialogContent>
     </Dialog>
     </>
   );
