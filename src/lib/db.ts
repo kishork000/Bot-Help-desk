@@ -120,6 +120,12 @@ export async function updateMedia(id: number, title: string, type: 'video' | 'im
     return db.run('UPDATE media SET title = ?, type = ?, url = ? WHERE id = ?', title, type, url, id);
 }
 
+export async function searchMedia(query: string) {
+    const db = await getDb();
+    // Using LIKE to find media with titles that contain the query string
+    return db.all("SELECT id, title, type, url FROM media WHERE title LIKE ?", `%${query}%`);
+}
+
 // --- Unanswered Queries Management ---
 export async function getUnansweredQueries() {
     const db = await getDb();
