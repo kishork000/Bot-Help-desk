@@ -97,6 +97,15 @@ export async function updateFaq(id: number, question: string, answer: string) {
     await db.run('UPDATE faqs SET question = ?, answer = ? WHERE id = ?', question, answer, id);
 }
 
+export async function searchFaqs(query: string) {
+    const db = await getDb();
+    const searchTerms = query.split(' ').map(term => `%${term}%`);
+    const whereClauses = searchTerms.map(() => '(question LIKE ? OR answer LIKE ?)').join(' AND ');
+    const sql = `SELECT question, answer FROM faqs WHERE ${whereClauses}`;
+    const params = searchTerms.flatMap(term => [term, term]);
+    return db.all(sql, ...params);
+}
+
 // --- PIN Code Management ---
 export async function getPinCodes() {
     const db = await getDb();
@@ -117,6 +126,15 @@ export async function updatePinCode(pincode: string, info: string) {
     await db.run('UPDATE pincodes SET info = ? WHERE pincode = ?', info, pincode);
 }
 
+export async function searchPinCodes(query: string) {
+    const db = await getDb();
+    const searchTerms = query.split(' ').map(term => `%${term}%`);
+    const whereClauses = searchTerms.map(() => 'pincode LIKE ? OR info LIKE ?').join(' OR ');
+    const sql = `SELECT pincode, info FROM pincodes WHERE ${whereClauses}`;
+    const params = searchTerms.flatMap(term => [term, term]);
+    return db.all(sql, ...params);
+}
+
 // --- Media Management ---
 export async function getMedia() {
     const db = await getDb();
@@ -135,26 +153,23 @@ export async function updateMedia(id: number, title: string, type: 'video' | 'im
 
 export async function searchMedia(query: string) {
     const db = await getDb();
-    const searchTerms = query.split(' ').map(term => `%${term}%`);
+    const searchTerms = query.split(' ').filter(term => term.length > 2).map(term => `%${term}%`);
+    if (searchTerms.length === 0) return [];
     
-    // Build a query with a LIKE clause for each search term
     const whereClauses = searchTerms.map(() => '(title LIKE ? OR url LIKE ?)').join(' AND ');
     const sql = `SELECT id, title, type, url FROM media WHERE ${whereClauses}`;
-    
-    // Flatten the search terms for the query parameters
     const params = searchTerms.flatMap(term => [term, term]);
-    
+
     return db.all(sql, ...params);
 }
 
-
-// --- Unanswered Conversations Management ---
+// --- Unanswered Conversations ---
 export async function getUnansweredConversations() {
     const db = await getDb();
     return db.all('SELECT id, query, answer, timestamp FROM unanswered_conversations ORDER BY timestamp DESC');
 }
 
-export async function addUnansweredConversation(query: string, answer: string) {
+export async function addUnansweredConversation(query: string, answer: string | null) {
     const db = await getDb();
     await db.run('INSERT INTO unanswered_conversations (query, answer) VALUES (?, ?)', query, answer);
 }
