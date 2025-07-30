@@ -7,6 +7,17 @@ import {ai} from '@/ai/genkit';
 import {searchFaqs} from '@/lib/db';
 import {z} from 'genkit';
 
+const FaqSearchInputSchema = z.object({
+  query: z.string().describe("The user's question to search for."),
+});
+
+const FaqSearchOutputSchema = z.array(
+  z.object({
+    question: z.string(),
+    answer: z.string(),
+  })
+);
+
 const FaqSearchQueryGenInputSchema = z.object({
   query: z.string().describe("The user's question to analyze."),
 });
@@ -29,20 +40,11 @@ User Question: {{{query}}}
 `,
 });
 
-export const findFaqTool = ai.defineTool(
+export const findFaq = ai.defineFlow(
   {
-    name: 'findFaq',
-    description:
-      "Searches the Frequently Asked Questions (FAQs) for an answer to a user's query. Use this for general questions about services or processes.",
-    inputSchema: z.object({
-      query: z.string().describe("The user's question to search for."),
-    }),
-    outputSchema: z.array(
-      z.object({
-        question: z.string(),
-        answer: z.string(),
-      })
-    ),
+    name: 'findFaqFlow',
+    inputSchema: FaqSearchInputSchema,
+    outputSchema: FaqSearchOutputSchema,
   },
   async input => {
     console.log(`Original user query for FAQ search: ${input.query}`);
@@ -57,4 +59,15 @@ export const findFaqTool = ai.defineTool(
     console.log(`Found ${results.length} FAQ items with smart query.`);
     return results;
   }
+);
+
+export const findFaqTool = ai.defineTool(
+  {
+    name: 'findFaq',
+    description:
+      "Searches the Frequently Asked Questions (FAQs) for an answer to a user's query. Use this for general questions about services or processes.",
+    inputSchema: FaqSearchInputSchema,
+    outputSchema: FaqSearchOutputSchema,
+  },
+  findFaq
 );

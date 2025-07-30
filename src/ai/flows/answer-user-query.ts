@@ -3,16 +3,17 @@
  * @fileOverview The main query engine for the chatbot.
  *
  * This flow is responsible for receiving a user's query and determining the best
- * way to answer it by using a set of specialized tools.
+ * way to answer it by using a set of specialized tools. It first analyzes the user's
+ * intent to select the correct tool, then executes that tool.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {findMediaTool} from './find-media';
-import {findFaqTool} from './find-faq';
-import {findPinCodeInfoTool} from './find-pincode-info';
+import {findMedia, findMediaTool} from './find-media';
+import {findFaq, findFaqTool} from './find-faq';
+import {findPinCodeInfo, findPinCodeInfoTool} from './find-pincode-info';
 import {tellJoke} from './tell-joke';
-import { answerGeneralQuestion } from './answer-general-question';
+import {answerGeneralQuestion} from './answer-general-question';
 
 const AnswerUserQueryInputSchema = z.object({
   query: z.string().describe("The user's question or message."),
@@ -22,6 +23,7 @@ export type AnswerUserQueryInput = z.infer<typeof AnswerUserQueryInputSchema>;
 const AnswerUserQueryOutputSchema = z.object({
   answer: z.string().describe('The final answer to the user.'),
   isJoke: z.boolean().optional().describe('Set to true if the answer is a joke.'),
+  toolUsed: z.string().optional().describe('The name of the tool that was used to generate the answer.'),
 });
 export type AnswerUserQueryOutput = z.infer<typeof AnswerUserQueryOutputSchema>;
 
@@ -31,28 +33,28 @@ export async function answerUserQuery(
   // A specific check for jokes, since it's a very different kind of request.
   if (/joke/i.test(input.query)) {
     const jokeResult = await tellJoke();
-    return { answer: jokeResult.joke, isJoke: true };
+    return {answer: jokeResult.joke, isJoke: true};
   }
   return answerUserQueryFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'answerUserQueryPrompt',
+const intentAnalysisPrompt = ai.definePrompt({
+  name: 'userIntentAnalysisPrompt',
   input: {schema: AnswerUserQueryInputSchema},
-  output: {schema: AnswerUserQueryOutputSchema},
+  output: {
+    schema: z.object({
+      intent: z
+        .enum(['faq', 'pincode', 'media', 'greeting', 'other'])
+        .describe("The user's likely intent."),
+    }),
+  },
   tools: [findFaqTool, findPinCodeInfoTool, findMediaTool],
-  model: 'googleai/gemini-2.0-flash',
-  prompt: `You are a helpful AI assistant. Your primary goal is to answer the user's question as accurately as possible.
-
-You have access to a set of specialized tools to find information from a local knowledge base.
-- Use 'findFaq' to answer general questions. If the tool returns a result with a relevant answer, you MUST use the value of the 'answer' field from the tool's output as your response.
-- Use 'findPinCodeInfo' if the user asks about a specific location, city, or provides a PIN code.
-- Use 'findMedia' if the user is asking for a video, image, or reel. If the tool returns one or more media items, you MUST format the response like this for each item: "I found this for you: [media.title](media.url)".
-
-Prioritize using the tools over your own general knowledge. If the tools return relevant information, you MUST use that information to construct your answer.
-If the tools do not return any relevant information, you may use your own general knowledge to answer the question. This includes simple greetings like "hello".
-
-If you find media, format the links nicely in your response.
+  prompt: `You are an expert at analyzing user queries to determine their intent.
+- If the user asks for a video, image, or reel, the intent is 'media'.
+- If the user asks about a specific location, city, or provides a PIN code, the intent is 'pincode'.
+- If the user asks a general question that might be in an FAQ, the intent is 'faq'.
+- If the user is just saying hello or making small talk, the intent is 'greeting'.
+- For anything else, the intent is 'other'.
 
 User Question: {{{query}}}
 `,
@@ -64,16 +66,37 @@ const answerUserQueryFlow = ai.defineFlow(
     inputSchema: AnswerUserQueryInputSchema,
     outputSchema: AnswerUserQueryOutputSchema,
   },
-  async (input) => {
-    const llmResponse = await prompt(input);
-    const output = llmResponse.output();
+  async input => {
+    // Step 1: Analyze Intent
+    const intentResponse = await intentAnalysisPrompt(input);
+    const intent = intentResponse.output?.intent || 'other';
 
-    if (!output) {
-      console.log('Main flow did not produce output, falling back to general question.');
-      const generalAnswer = await answerGeneralQuestion(input);
-      return { answer: generalAnswer.answer };
+    console.log(`Determined intent: ${intent} for query: "${input.query}"`);
+
+    // Step 2: Execute Tool Based on Intent
+    if (intent === 'faq') {
+      const results = await findFaq({query: input.query});
+      if (results.length > 0) {
+        const combinedAnswers = results.map(r => `Q: ${r.question}\nA: ${r.answer}`).join('\n\n');
+        return { answer: `I found some information that might help:\n\n${combinedAnswers}`, toolUsed: 'findFaq' };
+      }
+    } else if (intent === 'pincode') {
+      const results = await findPinCodeInfo({query: input.query});
+       if (results.length > 0) {
+        const combinedInfo = results.map(r => `${r.pincode}: ${r.info}`).join('\n');
+        return { answer: `Here is the information I found for your location:\n\n${combinedInfo}`, toolUsed: 'findPinCodeInfo'};
+      }
+    } else if (intent === 'media') {
+       const results = await findMedia({query: input.query});
+       if (results.length > 0) {
+        const formattedLinks = results.map(r => `I found this for you: [${r.title}](${r.url})`).join('\n');
+        return { answer: formattedLinks, toolUsed: 'findMedia' };
+      }
     }
 
-    return output;
+    // Step 3: Fallback for 'greeting', 'other', or if tools find nothing
+    console.log(`No tool results or intent is '${intent}', falling back to general knowledge.`);
+    const generalAnswer = await answerGeneralQuestion(input);
+    return {answer: generalAnswer.answer, toolUsed: 'answerGeneralQuestion'};
   }
 );

@@ -2,15 +2,13 @@
 
 import { generatePinCodeExplanation } from '@/ai/flows/generate-pin-code-explanation';
 import { answerUserQuery } from '@/ai/flows/answer-user-query';
-import { getDb, addUnansweredConversation, searchPinCodes } from '@/lib/db';
+import { addUnansweredConversation, searchPinCodes } from '@/lib/db';
 import { answerGeneralQuestion } from '@/ai/flows/answer-general-question';
 
 const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
 
 export async function handleUserMessage(message: string): Promise<string> {
-  const db = await getDb();
-
-  // First, check if the message is a PIN code.
+  // First, check if the message is a PIN code for a direct match.
   const pinCodeMatch = message.match(pinCodeRegex);
   if (pinCodeMatch) {
       const pinCode = pinCodeMatch[0];
@@ -27,7 +25,7 @@ export async function handleUserMessage(message: string): Promise<string> {
       return explanation.explanation;
   }
 
-  // If not a PIN code, let the new master flow try to answer.
+  // If not a direct PIN code, use the enhanced AI flow.
   try {
     const result = await answerUserQuery({ query: message });
     
@@ -36,18 +34,19 @@ export async function handleUserMessage(message: string): Promise<string> {
       return result.answer;
     }
 
-    // Heuristic: If the answer seems like a refusal, it might have failed.
-    // Let's fallback to the general knowledge flow.
-    const isRefusal = /don't know|cannot answer|unable to find/i.test(result.answer);
-    if (isRefusal) {
-       throw new Error("Answer from tools was a refusal, fallback to general knowledge.");
+    // If the main flow used a tool but found nothing, it will fall back to answerGeneralQuestion.
+    // In this case, we log it for review.
+    if (result.toolUsed === 'answerGeneralQuestion') {
+       await addUnansweredConversation(message, result.answer);
+       return result.answer + "\\n\\n(I've logged this question for our team to review.)";
     }
 
-    // Return just the answer string from the structured response.
+    // Otherwise, the tools found something, so we return the answer.
     return result.answer;
 
   } catch (error) {
-    console.log("Primary query flow failed or was insufficient, trying general knowledge fallback. Error:", error);
+    console.error('Error in primary flow:', error);
+    // Ultimate fallback in case of unexpected errors.
     try {
         const generalAnswer = await answerGeneralQuestion({ query: message });
         await addUnansweredConversation(message, generalAnswer.answer);
