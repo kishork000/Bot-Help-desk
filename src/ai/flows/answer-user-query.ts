@@ -23,7 +23,10 @@ export type AnswerUserQueryInput = z.infer<typeof AnswerUserQueryInputSchema>;
 const AnswerUserQueryOutputSchema = z.object({
   answer: z.string().describe('The final answer to the user.'),
   isJoke: z.boolean().optional().describe('Set to true if the answer is a joke.'),
-  toolUsed: z.string().optional().describe('The name of the tool that was used to generate the answer.'),
+  toolUsed: z
+    .string()
+    .optional()
+    .describe('The name of the tool that was used to generate the answer.'),
 });
 export type AnswerUserQueryOutput = z.infer<typeof AnswerUserQueryOutputSchema>;
 
@@ -48,7 +51,6 @@ const intentAnalysisPrompt = ai.definePrompt({
         .describe("The user's likely intent."),
     }),
   },
-  tools: [findFaqTool, findPinCodeInfoTool, findMediaTool],
   prompt: `You are an expert at analyzing user queries to determine their intent.
 - If the user asks for a video, image, or reel, the intent is 'media'.
 - If the user asks about a specific location, city, or provides a PIN code, the intent is 'pincode'.
@@ -77,25 +79,39 @@ const answerUserQueryFlow = ai.defineFlow(
     if (intent === 'faq') {
       const results = await findFaq({query: input.query});
       if (results.length > 0) {
-        const combinedAnswers = results.map(r => `Q: ${r.question}\nA: ${r.answer}`).join('\n\n');
-        return { answer: `I found some information that might help:\n\n${combinedAnswers}`, toolUsed: 'findFaq' };
+        const combinedAnswers = results
+          .map(r => `Q: ${r.question}\nA: ${r.answer}`)
+          .join('\n\n');
+        return {
+          answer: `I found some information that might help:\n\n${combinedAnswers}`,
+          toolUsed: 'findFaq',
+        };
       }
     } else if (intent === 'pincode') {
       const results = await findPinCodeInfo({query: input.query});
-       if (results.length > 0) {
-        const combinedInfo = results.map(r => `${r.pincode}: ${r.info}`).join('\n');
-        return { answer: `Here is the information I found for your location:\n\n${combinedInfo}`, toolUsed: 'findPinCodeInfo'};
+      if (results.length > 0) {
+        const combinedInfo = results
+          .map(r => `${r.pincode}: ${r.info}`)
+          .join('\n');
+        return {
+          answer: `Here is the information I found for your location:\n\n${combinedInfo}`,
+          toolUsed: 'findPinCodeInfo',
+        };
       }
     } else if (intent === 'media') {
-       const results = await findMedia({query: input.query});
-       if (results.length > 0) {
-        const formattedLinks = results.map(r => `I found this for you: [${r.title}](${r.url})`).join('\n');
-        return { answer: formattedLinks, toolUsed: 'findMedia' };
+      const results = await findMedia({query: input.query});
+      if (results.length > 0) {
+        const formattedLinks = results
+          .map(r => `I found this for you: [${r.title}](${r.url})`)
+          .join('\n');
+        return {answer: formattedLinks, toolUsed: 'findMedia'};
       }
     }
 
     // Step 3: Fallback for 'greeting', 'other', or if tools find nothing
-    console.log(`No tool results or intent is '${intent}', falling back to general knowledge.`);
+    console.log(
+      `No tool results or intent is '${intent}', falling back to general knowledge.`
+    );
     const generalAnswer = await answerGeneralQuestion(input);
     return {answer: generalAnswer.answer, toolUsed: 'answerGeneralQuestion'};
   }
