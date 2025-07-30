@@ -13,61 +13,65 @@ async function initializeDatabase() {
       driver: sqlite3.Database
     });
 
-    await newDb.exec(`
-        CREATE TABLE IF NOT EXISTS faqs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            question TEXT NOT NULL,
-            answer TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS pincodes (
-            pincode TEXT PRIMARY KEY,
-            info TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS media (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            type TEXT NOT NULL CHECK(type IN ('video', 'image', 'reel')),
-            url TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS unanswered_conversations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            query TEXT NOT NULL,
-            answer TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
-    
-    // Seed initial data if tables are empty
-    const faqsCount = await newDb.get('SELECT COUNT(*) as count FROM faqs');
-    if (faqsCount.count === 0) {
-        const stmt = await newDb.prepare('INSERT INTO faqs (question, answer) VALUES (?, ?)');
-        for (const faq of initialFaqs) {
-            await stmt.run(faq.question, faq.answer);
-        }
-        await stmt.finalize();
-    }
-
-    const pincodesCount = await newDb.get('SELECT COUNT(*) as count FROM pincodes');
-    if (pincodesCount.count === 0) {
-        const stmt = await newDb.prepare('INSERT INTO pincodes (pincode, info) VALUES (?, ?)');
-        for (const [pincode, info] of Object.entries(initialPinCodeData)) {
-            await stmt.run(pincode, info);
-        }
-        await stmt.finalize();
-    }
-    
-    // Migration for old unanswered_queries table
+    // Use a transaction to ensure all schema changes are atomic
+    await newDb.exec('BEGIN TRANSACTION;');
     try {
-        const oldTableInfo = await newDb.get("SELECT name FROM sqlite_master WHERE type='table' AND name='unanswered_queries'");
-        if (oldTableInfo) {
-            await newDb.exec('ALTER TABLE unanswered_queries RENAME TO unanswered_conversations');
-            await newDb.exec('ALTER TABLE unanswered_conversations ADD COLUMN answer TEXT');
+        await newDb.exec(`
+            CREATE TABLE IF NOT EXISTS faqs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL
+            );
+        `);
+
+        await newDb.exec(`
+            CREATE TABLE IF NOT EXISTS pincodes (
+                pincode TEXT PRIMARY KEY,
+                info TEXT NOT NULL
+            );
+        `);
+        
+        await newDb.exec(`
+            CREATE TABLE IF NOT EXISTS media (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('video', 'image', 'reel')),
+                url TEXT NOT NULL
+            );
+        `);
+
+        await newDb.exec(`
+            CREATE TABLE IF NOT EXISTS unanswered_conversations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                query TEXT NOT NULL,
+                answer TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        
+        // Seed initial data if tables are empty
+        const faqsCount = await newDb.get('SELECT COUNT(*) as count FROM faqs');
+        if (faqsCount.count === 0) {
+            const stmt = await newDb.prepare('INSERT INTO faqs (question, answer) VALUES (?, ?)');
+            for (const faq of initialFaqs) {
+                await stmt.run(faq.question, faq.answer);
+            }
+            await stmt.finalize();
         }
-    } catch (error) {
-        console.warn("Could not perform migration for unanswered_queries. This is expected if the table didn't exist.", error);
+
+        const pincodesCount = await newDb.get('SELECT COUNT(*) as count FROM pincodes');
+        if (pincodesCount.count === 0) {
+            const stmt = await newDb.prepare('INSERT INTO pincodes (pincode, info) VALUES (?, ?)');
+            for (const [pincode, info] of Object.entries(initialPinCodeData)) {
+                await stmt.run(pincode, info);
+            }
+            await stmt.finalize();
+        }
+        
+        await newDb.exec('COMMIT;');
+    } catch (e) {
+        await newDb.exec('ROLLBACK;');
+        throw e;
     }
 
 

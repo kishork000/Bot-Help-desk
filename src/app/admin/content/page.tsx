@@ -12,7 +12,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredConversations, deleteUnansweredConversation } from "@/lib/db";
-import { PlusCircle, LinkIcon, Trash2 } from "lucide-react";
+import { PlusCircle, LinkIcon, Trash2, Upload } from "lucide-react";
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -183,35 +183,36 @@ export default function ContentPage() {
   const handleSaveCategorization = async () => {
     if (!currentCategorizeQuery) return;
     
-    // In the future, this is where we would save the links to influence the bot.
-    // For now, it opens the relevant dialogs to add the content.
     toast({
         title: "Ready to Add Content",
         description: "Opening the relevant dialogs for you to save.",
     });
 
     if(categorizeSelection.faq) {
-      // This will now open the Add FAQ dialog, pre-filled.
       handleOpenFaqDialog(null, currentCategorizeQuery.query, currentCategorizeQuery.answer || '');
     }
     if(categorizeSelection.pincode) {
-       // This will now open the Add PIN Code dialog, pre-filled.
        handleOpenPinCodeDialog(currentCategorizeQuery.query, currentCategorizeQuery.answer);
     }
     if(categorizeSelection.media) {
-       // This will now open the Add Media dialog, pre-filled.
        handleOpenMediaDialog(null, currentCategorizeQuery.query);
     }
-    // TODO: Handle script logic when available
 
     setIsCategorizeDialogOpen(false);
     
-    // We can choose to delete the query now or let the user do it manually.
-    // Let's delete it to clean up the queue.
     await deleteUnansweredConversation(currentCategorizeQuery.id);
     await loadContent();
     setCurrentCategorizeQuery(null);
   };
+  
+  const handleCsvUpload = (type: 'faq' | 'pincode') => {
+      // In a real app, this would trigger a file input and then an API call to a serverless function.
+      // For this prototype, we'll just show a toast.
+      toast({
+          title: 'CSV Upload (Coming Soon)',
+          description: `This is where the ${type.toUpperCase()} CSV upload functionality will be implemented.`,
+      });
+  }
 
   return (
     <>
@@ -239,10 +240,16 @@ export default function ContentPage() {
                 Add, edit, or remove FAQs to train your chatbot.
               </CardDescription>
             </div>
-            <Button onClick={() => handleOpenFaqDialog()}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add FAQ
-            </Button>
+            <div className="flex gap-2">
+                <Button variant="outline" onClick={() => handleCsvUpload('faq')}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload CSV
+                </Button>
+                <Button onClick={() => handleOpenFaqDialog()}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add FAQ
+                </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -278,10 +285,16 @@ export default function ContentPage() {
                 Manage the information associated with different PIN codes.
               </CardDescription>
             </div>
-             <Button onClick={() => handleOpenPinCodeDialog()}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add PIN Code
-            </Button>
+             <div className="flex gap-2">
+                <Button variant="outline" onClick={() => handleCsvUpload('pincode')}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload CSV
+                </Button>
+                <Button onClick={() => handleOpenPinCodeDialog()}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add PIN Code
+                </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
