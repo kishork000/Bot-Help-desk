@@ -36,6 +36,7 @@ async function initializeDatabase() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 type TEXT NOT NULL CHECK(type IN ('video', 'image', 'reel')),
+                category TEXT NOT NULL DEFAULT 'general',
                 url TEXT NOT NULL
             );
         `);
@@ -49,6 +50,12 @@ async function initializeDatabase() {
             );
         `);
         
+        // Check if media table needs migration for category column
+        const mediaCols = await newDb.all("PRAGMA table_info(media);");
+        if (!mediaCols.some(col => col.name === 'category')) {
+            await newDb.exec('ALTER TABLE media ADD COLUMN category TEXT NOT NULL DEFAULT "general"');
+        }
+
         // Seed initial data if tables are empty
         const faqsCount = await newDb.get('SELECT COUNT(*) as count FROM faqs');
         if (faqsCount.count === 0) {
@@ -143,17 +150,17 @@ export async function searchPinCodes(query: string) {
 // --- Media Management ---
 export async function getMedia() {
     const db = await getDb();
-    return db.all("SELECT id, title, type, url FROM media");
+    return db.all("SELECT id, title, type, category, url FROM media");
 }
 
-export async function addMedia(title: string, type: 'video' | 'image' | 'reel', url: string) {
+export async function addMedia(title: string, type: 'video' | 'image' | 'reel', category: string, url: string) {
     const db = await getDb();
-    await db.run('INSERT INTO media (title, type, url) VALUES (?, ?, ?)', title, type, url);
+    await db.run('INSERT INTO media (title, type, category, url) VALUES (?, ?, ?, ?)', title, type, category, url);
 }
 
-export async function updateMedia(id: number, title: string, type: 'video' | 'image' | 'reel', url: string) {
+export async function updateMedia(id: number, title: string, type: 'video' | 'image' | 'reel', category: string, url: string) {
     const db = await getDb();
-    await db.run('UPDATE media SET title = ?, type = ?, url = ? WHERE id = ?', title, type, url, id);
+    await db.run('UPDATE media SET title = ?, type = ?, category = ?, url = ? WHERE id = ?', title, type, category, url, id);
 }
 
 export async function searchMedia(query: string) {
@@ -164,7 +171,7 @@ export async function searchMedia(query: string) {
         return [];
     }
 
-    const whereClauses = searchTerms.map(() => '(title LIKE ? OR url LIKE ?)').join(' OR ');
+    const whereClauses = searchTerms.map(() => '(title LIKE ? OR category LIKE ?)').join(' OR ');
     const sql = `SELECT id, title, type, url FROM media WHERE ${whereClauses}`;
     const params = searchTerms.flatMap(term => [term, term]);
 

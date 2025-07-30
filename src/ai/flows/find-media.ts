@@ -11,7 +11,7 @@ import { searchMedia } from '@/lib/db';
 import { z } from 'genkit';
 
 const MediaSearchInputSchema = z.object({
-    query: z.string().describe('The search term for the media content.'),
+    query: z.string().describe('The search term for the media content, which may include a category like "sehat video" or "weight loss image".'),
 });
 
 const MediaSearchOutputSchema = z.array(z.object({
@@ -36,7 +36,7 @@ export const findMedia = ai.defineFlow({
 export const findMediaTool = ai.defineTool(
   {
     name: 'findMedia',
-    description: 'Searches for relevant media (videos, images, reels) based on a user query. Use this if the user asks for a video, image, or reel about a specific topic.',
+    description: 'Searches for relevant media (videos, images, reels) based on a user query. Use this if the user asks for a video, image, or reel about a specific topic or category.',
     inputSchema: MediaSearchInputSchema,
     outputSchema: MediaSearchOutputSchema,
   },

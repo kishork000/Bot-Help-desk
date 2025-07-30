@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 type FaqItem = { id: number; question: string; answer: string; };
 type PinCodeData = Record<string, string>;
-type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; url: string; };
+type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; category: string; url: string; };
 type UnansweredQuery = { id: number, query: string, answer: string | null, timestamp: string };
 type CategorizeSelection = {
   faq: boolean;
@@ -112,20 +112,20 @@ export default function ContentPage() {
   };
 
   const handleOpenMediaDialog = (mediaItem: Partial<MediaItem> | null = null, query: string = '') => {
-    setCurrentMedia(mediaItem ? { ...mediaItem } : { title: query, type: 'video', url: '' });
+    setCurrentMedia(mediaItem ? { ...mediaItem } : { title: query, type: 'video', category: 'general', url: '' });
     setIsMediaDialogOpen(true);
   };
 
   const handleSaveMedia = async () => {
-    if (!currentMedia || !currentMedia.title || !currentMedia.type || !currentMedia.url) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Title, type, and URL are required.' });
+    if (!currentMedia || !currentMedia.title || !currentMedia.type || !currentMedia.category || !currentMedia.url) {
+        toast({ variant: 'destructive', title: 'Error', description: 'All media fields are required.' });
         return;
     }
     
     if (currentMedia.id !== undefined) {
-      await updateMedia(currentMedia.id, currentMedia.title, currentMedia.type, currentMedia.url);
+      await updateMedia(currentMedia.id, currentMedia.title, currentMedia.type, currentMedia.category, currentMedia.url);
     } else {
-      await addMedia(currentMedia.title, currentMedia.type, currentMedia.url);
+      await addMedia(currentMedia.title, currentMedia.type, currentMedia.category, currentMedia.url);
     }
     
     await loadContent();
@@ -403,7 +403,7 @@ export default function ContentPage() {
             <div>
               <CardTitle>Media Content</CardTitle>
               <CardDescription>
-                Manage links to videos, images, and reels.
+                Manage videos, images, and reels.
               </CardDescription>
             </div>
             <Button onClick={() => handleOpenMediaDialog()}>
@@ -417,6 +417,7 @@ export default function ContentPage() {
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>URL</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -424,13 +425,14 @@ export default function ContentPage() {
               <TableBody>
                 {media.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center h-24">No media content yet.</TableCell>
+                        <TableCell colSpan={5} className="text-center h-24">No media content yet.</TableCell>
                     </TableRow>
                 )}
                 {media.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.title}</TableCell>
                     <TableCell className="capitalize">{item.type}</TableCell>
+                    <TableCell className="capitalize">{item.category}</TableCell>
                     <TableCell className="text-muted-foreground truncate max-w-xs">
                         <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.url}</a>
                     </TableCell>
@@ -545,7 +547,7 @@ export default function ContentPage() {
             <DialogHeader>
                 <DialogTitle>{currentMedia?.id !== undefined ? 'Edit Media' : 'Add New Media'}</DialogTitle>
                 <DialogDescription>
-                    {currentMedia?.id !== undefined ? 'Update this media item.' : 'Add a new video, image, or reel link.'}
+                    {currentMedia?.id !== undefined ? 'Update this media item.' : 'Add a new video, image, or other media asset.'}
                 </DialogDescription>
             </DialogHeader>
             {currentMedia && (
@@ -575,13 +577,29 @@ export default function ContentPage() {
                             </SelectContent>
                         </Select>
                     </div>
+                     <div className="grid gap-2">
+                        <Label htmlFor="media-category">Category</Label>
+                        <Input
+                            id="media-category"
+                            value={currentMedia.category || ''}
+                            onChange={(e) => setCurrentMedia({ ...currentMedia, category: e.target.value })}
+                            placeholder="e.g., sehat, weight loss"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="media-file">Media File</Label>
+                        <Input id="media-file" type="file" />
+                        <p className="text-xs text-muted-foreground">
+                            For this prototype, also paste the public URL below.
+                        </p>
+                    </div>
                     <div className="grid gap-2">
                         <Label htmlFor="media-url">URL</Label>
                         <Input
                             id="media-url"
                             value={currentMedia.url || ''}
                             onChange={(e) => setCurrentMedia({ ...currentMedia, url: e.target.value })}
-                            placeholder="https://example.com/media.mp4"
+                            placeholder="/videos/my-video.mp4"
                         />
                     </div>
                 </div>
