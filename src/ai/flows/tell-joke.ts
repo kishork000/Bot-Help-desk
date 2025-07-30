@@ -3,6 +3,7 @@
  * @fileOverview A flow that tells a random joke.
  *
  * - tellJoke - A function that returns a random joke.
+ * - tellJokeTool - A Genkit tool that tells a joke.
  * - TellJokeOutput - The return type for the tellJoke function.
  */
 
@@ -33,4 +34,13 @@ const tellJokeFlow = ai.defineFlow(
     const {output} = await prompt();
     return output!;
   }
+);
+
+export const tellJokeTool = ai.defineTool(
+  {
+    name: 'tellJoke',
+    description: 'Tells a random, family-friendly joke. Use this if the user explicitly asks for a joke.',
+    outputSchema: z.object({ joke: z.string() }),
+  },
+  async () => (await tellJoke()).joke,
 );

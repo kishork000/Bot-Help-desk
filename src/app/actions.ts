@@ -10,7 +10,7 @@ import {answerGeneralQuestion} from '@/ai/flows/answer-general-question';
 const pinCodeRegex = /(?<!\d)\d{6}(?!\d)/;
 
 export async function handleUserMessage(message: string): Promise<string> {
-  // First, check if the message is a PIN code for a direct match.
+  // First, check if the message is a PIN code for a direct match, as this is a very specific intent.
   const pinCodeMatch = message.match(pinCodeRegex);
   if (pinCodeMatch) {
     const pinCode = pinCodeMatch[0];
@@ -24,15 +24,7 @@ export async function handleUserMessage(message: string): Promise<string> {
       pinCode,
       villageInformation,
     });
-
-    // If we didn't have local info, save the response for review.
-    if (villageInformation === 'No local information available.') {
-      await addUnansweredConversation(
-        `PIN code: ${pinCode}`,
-        explanation.explanation
-      );
-    }
-
+    
     return explanation.explanation;
   }
 
@@ -40,23 +32,16 @@ export async function handleUserMessage(message: string): Promise<string> {
   try {
     const result = await answerUserQuery({query: message});
 
-    // If the master flow decided to tell a joke, we just return it.
-    if (result.isJoke) {
-      return result.answer;
+    // If no specific tool was used, it means the bot answered from general knowledge.
+    // We log these for review to see if a new tool or FAQ is needed.
+    if (!result.toolUsed) {
+       await addUnansweredConversation(message, result.answer);
     }
 
-    // If the main flow used a tool but found nothing, it will fall back to answerGeneralQuestion.
-    // In this case, we log it for review.
-    if (result.toolUsed === 'answerGeneralQuestion') {
-      await addUnansweredConversation(message, result.answer);
-      return result.answer;
-    }
-
-    // Otherwise, the tools found something, so we return the answer.
     return result.answer;
   } catch (error) {
     console.error('Error in primary flow:', error);
-    // Ultimate fallback in case of unexpected errors.
+    // Ultimate fallback in case of unexpected errors in the main flow.
     try {
       const generalAnswer = await answerGeneralQuestion({query: message});
       await addUnansweredConversation(message, generalAnswer.answer);
