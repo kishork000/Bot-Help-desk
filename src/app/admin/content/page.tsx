@@ -228,8 +228,11 @@ export default function ContentPage() {
 
     setIsCategorizeDialogOpen(false);
     
-    await deleteUnansweredConversation(currentCategorizeQuery.id);
-    await loadContent();
+    // We only delete the query if it was categorized, otherwise the user might want to keep it.
+    if(categorizeSelection.faq || categorizeSelection.pincode || categorizeSelection.media || categorizeSelection.script) {
+        await deleteUnansweredConversation(currentCategorizeQuery.id);
+        await loadContent();
+    }
     setCurrentCategorizeQuery(null);
   };
   
@@ -768,3 +771,5 @@ export default function ContentPage() {
     </>
   );
 }
+
+    
