@@ -9,9 +9,9 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {findMedia, findMediaTool} from './find-media';
-import {findFaq, findFaqTool} from './find-faq';
-import {findPinCodeInfo, findPinCodeInfoTool} from './find-pincode-info';
+import {findMedia} from './find-media';
+import {findFaq} from './find-faq';
+import {findPinCodeInfo} from './find-pincode-info';
 import {tellJoke} from './tell-joke';
 import {answerGeneralQuestion} from './answer-general-question';
 
@@ -70,8 +70,22 @@ const answerUserQueryFlow = ai.defineFlow(
   },
   async input => {
     // Step 1: Analyze Intent
-    const intentResponse = await intentAnalysisPrompt(input);
-    const intent = intentResponse.output?.intent || 'other';
+    const {output: intentOutput} = await ai.generate({
+      model: 'googleai/gemini-2.0-flash',
+      prompt: `Analyze the user's query to determine their intent.
+- If the user asks for a video, image, or reel, the intent is 'media'.
+- If the user asks about a specific location, city, or provides a PIN code, the intent is 'pincode'.
+- If the user asks a general question that might be in an FAQ, the intent is 'faq'.
+- If the user is just saying hello or making small talk, the intent is 'greeting'.
+- For anything else, the intent is 'other'.
+User Question: ${input.query}`,
+      output: {
+        schema: z.object({
+          intent: z.enum(['faq', 'pincode', 'media', 'greeting', 'other']),
+        }),
+      },
+    });
+    const intent = intentOutput?.intent || 'other';
 
     console.log(`Determined intent: ${intent} for query: "${input.query}"`);
 
@@ -101,17 +115,29 @@ const answerUserQueryFlow = ai.defineFlow(
     } else if (intent === 'media') {
       const results = await findMedia({query: input.query});
       if (results.length > 0) {
-        const formattedLinks = results
-          .map(r => `I found this for you: [${r.title}](${r.url})`)
-          .join('\n');
-        return {answer: formattedLinks, toolUsed: 'findMedia'};
+        // Let an LLM pick the best result and format it.
+        const {output: mediaOutput} = await ai.generate({
+          model: 'googleai/gemini-2.0-flash',
+          prompt: `From the following list of media items, pick the single best match for the user's query and format it as a markdown link.
+          User Query: "${input.query}"
+          Media Items:
+          ${JSON.stringify(results, null, 2)}
+          
+          Response format: "I found this for you: [title](url)"`,
+          output: {
+            schema: z.object({
+              response: z.string(),
+            }),
+          },
+        });
+
+        if (mediaOutput) {
+          return {answer: mediaOutput.response, toolUsed: 'findMedia'};
+        }
       }
     }
 
     // Step 3: Fallback for 'greeting', 'other', or if tools find nothing
-    console.log(
-      `No tool results or intent is '${intent}', falling back to general knowledge.`
-    );
     const generalAnswer = await answerGeneralQuestion(input);
     return {answer: generalAnswer.answer, toolUsed: 'answerGeneralQuestion'};
   }
