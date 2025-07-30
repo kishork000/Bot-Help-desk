@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredConversations, deleteUnansweredConversation } from "@/lib/db";
+import { getFaqs, addFaq, updateFaq, getPinCodes, addPinCode, updatePinCode, getMedia, addMedia, updateMedia, getUnansweredConversations, deleteUnansweredConversation, getScripts, addScript, updateScript, deleteScript } from "@/lib/db";
 import { PlusCircle, LinkIcon, Trash2, Upload } from "lucide-react";
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 type FaqItem = { id: number; question: string; answer: string; };
 type PinCodeData = Record<string, string>;
 type MediaItem = { id: number; title: string; type: 'video' | 'image' | 'reel'; category: string; url: string; };
+type ScriptItem = { id: number; title: string; category: string; content: string; imageUrl: string | null; };
 type UnansweredQuery = { id: number, query: string, answer: string | null, timestamp: string };
 type CategorizeSelection = {
   faq: boolean;
@@ -32,6 +33,7 @@ export default function ContentPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [pinCodeData, setPinCodeData] = useState<PinCodeData>({});
   const [media, setMedia] = useState<MediaItem[]>([]);
+  const [scripts, setScripts] = useState<ScriptItem[]>([]);
   const [unansweredQueries, setUnansweredQueries] = useState<UnansweredQuery[]>([]);
   const [selectedQueries, setSelectedQueries] = useState<Set<number>>(new Set());
   const { toast } = useToast();
@@ -45,6 +47,9 @@ export default function ContentPage() {
   const [isMediaDialogOpen, setIsMediaDialogOpen] = useState(false);
   const [currentMedia, setCurrentMedia] = useState<Partial<MediaItem> | null>(null);
   
+  const [isScriptDialogOpen, setIsScriptDialogOpen] = useState(false);
+  const [currentScript, setCurrentScript] = useState<Partial<ScriptItem> | null>(null);
+
   const [isCategorizeDialogOpen, setIsCategorizeDialogOpen] = useState(false);
   const [currentCategorizeQuery, setCurrentCategorizeQuery] = useState<UnansweredQuery | null>(null);
   const [categorizeSelection, setCategorizeSelection] = useState<CategorizeSelection>({ faq: false, pincode: false, media: false, script: false });
@@ -54,6 +59,7 @@ export default function ContentPage() {
       setFaqs(await getFaqs());
       setPinCodeData(await getPinCodes());
       setMedia(await getMedia());
+      setScripts(await getScripts());
       setUnansweredQueries(await getUnansweredConversations());
   }
 
@@ -131,6 +137,28 @@ export default function ContentPage() {
     await loadContent();
     setIsMediaDialogOpen(false);
     setCurrentMedia(null);
+  }
+
+  const handleOpenScriptDialog = (script: Partial<ScriptItem> | null = null) => {
+    setCurrentScript(script ? { ...script } : { title: '', category: '', content: '', imageUrl: '' });
+    setIsScriptDialogOpen(true);
+  };
+
+  const handleSaveScript = async () => {
+    if (!currentScript || !currentScript.title || !currentScript.category || !currentScript.content) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Title, category, and content are required for scripts.' });
+        return;
+    }
+    
+    if (currentScript.id !== undefined) {
+      await updateScript(currentScript.id, currentScript.title, currentScript.category, currentScript.content, currentScript.imageUrl || null);
+    } else {
+      await addScript(currentScript.title, currentScript.category, currentScript.content, currentScript.imageUrl || null);
+    }
+    
+    await loadContent();
+    setIsScriptDialogOpen(false);
+    setCurrentScript(null);
   }
 
   const handleDeleteQuery = async (id: number) => {
@@ -231,6 +259,82 @@ export default function ContentPage() {
         </TabsList>
       </div>
 
+      <TabsContent value="unanswered" className="mt-6">
+        <Card>
+          <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle>Unanswered Conversations</CardTitle>
+                  <CardDescription>
+                    Review questions your users asked that the chatbot couldn't answer, along with an AI-suggested answer.
+                  </CardDescription>
+                </div>
+                {selectedQueries.size > 0 && (
+                     <Button variant="destructive" size="sm" onClick={handleDeleteSelectedQueries}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete ({selectedQueries.size})
+                    </Button>
+                )}
+              </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                        checked={selectedQueries.size === unansweredQueries.length && unansweredQueries.length > 0}
+                        onCheckedChange={handleToggleSelectAllQueries}
+                        aria-label="Select all"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[30%]">Query</TableHead>
+                  <TableHead className="w-[30%]">Suggested Answer</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {unansweredQueries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      No unanswered queries yet. Good job!
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  unansweredQueries.map((query) => (
+                    <TableRow key={query.id} data-state={selectedQueries.has(query.id) && "selected"}>
+                      <TableCell>
+                          <Checkbox
+                            checked={selectedQueries.has(query.id)}
+                            onCheckedChange={() => handleToggleSelectQuery(query.id)}
+                            aria-label={`Select query ${query.id}`}
+                          />
+                      </TableCell>
+                      <TableCell className="font-medium">{query.query}</TableCell>
+                      <TableCell className="text-muted-foreground">{query.answer}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(new Date(query.timestamp), "PPP p")}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenCategorizeDialog(query)}>
+                            <LinkIcon className="mr-2 h-4 w-4"/>
+                            Categorize
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteQuery(query.id)}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
       <TabsContent value="faq" className="mt-6">
         <Card>
           <CardHeader className="flex flex-row justify-between items-start">
@@ -320,82 +424,6 @@ export default function ContentPage() {
           </CardContent>
         </Card>
       </TabsContent>
-
-      <TabsContent value="unanswered" className="mt-6">
-        <Card>
-          <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>Unanswered Conversations</CardTitle>
-                  <CardDescription>
-                    Review questions your users asked that the chatbot couldn't answer, along with an AI-suggested answer.
-                  </CardDescription>
-                </div>
-                {selectedQueries.size > 0 && (
-                     <Button variant="destructive" size="sm" onClick={handleDeleteSelectedQueries}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete ({selectedQueries.size})
-                    </Button>
-                )}
-              </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                        checked={selectedQueries.size === unansweredQueries.length && unansweredQueries.length > 0}
-                        onCheckedChange={handleToggleSelectAllQueries}
-                        aria-label="Select all"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[30%]">Query</TableHead>
-                  <TableHead className="w-[30%]">Suggested Answer</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {unansweredQueries.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No unanswered queries yet. Good job!
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  unansweredQueries.map((query) => (
-                    <TableRow key={query.id} data-state={selectedQueries.has(query.id) && "selected"}>
-                      <TableCell>
-                          <Checkbox
-                            checked={selectedQueries.has(query.id)}
-                            onCheckedChange={() => handleToggleSelectQuery(query.id)}
-                            aria-label={`Select query ${query.id}`}
-                          />
-                      </TableCell>
-                      <TableCell className="font-medium">{query.query}</TableCell>
-                      <TableCell className="text-muted-foreground">{query.answer}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {format(new Date(query.timestamp), "PPP p")}
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleOpenCategorizeDialog(query)}>
-                            <LinkIcon className="mr-2 h-4 w-4"/>
-                            Categorize
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteQuery(query.id)}>
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </TabsContent>
         
       <TabsContent value="media" className="mt-6">
         <Card>
@@ -449,16 +477,45 @@ export default function ContentPage() {
 
       <TabsContent value="scripts" className="mt-6">
         <Card>
-            <CardHeader>
-                <CardTitle>Custom Scripts</CardTitle>
-                <CardDescription>
-                Manage custom scripts and advanced chatbot responses. (Coming soon)
-                </CardDescription>
+            <CardHeader  className="flex flex-row justify-between items-start">
+                <div>
+                    <CardTitle>Custom Scripts</CardTitle>
+                    <CardDescription>
+                    Manage rich, formatted content like guides or articles for users.
+                    </CardDescription>
+                </div>
+                <Button onClick={() => handleOpenScriptDialog()}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Script
+                </Button>
             </CardHeader>
             <CardContent>
-                <div className="text-center text-muted-foreground py-12">
-                    <p>This section is under construction.</p>
-                </div>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Title</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                         {scripts.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={3} className="text-center h-24">No scripts yet.</TableCell>
+                            </TableRow>
+                        ) : (
+                            scripts.map((script) => (
+                                <TableRow key={script.id}>
+                                    <TableCell className="font-medium">{script.title}</TableCell>
+                                    <TableCell className="capitalize">{script.category}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="sm" onClick={() => handleOpenScriptDialog(script)}>Edit</Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </CardContent>
         </Card>
       </TabsContent>
@@ -611,6 +668,62 @@ export default function ContentPage() {
         </DialogContent>
     </Dialog>
 
+    <Dialog open={isScriptDialogOpen} onOpenChange={setIsScriptDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+                <DialogTitle>{currentScript?.id !== undefined ? 'Edit Script' : 'Add New Script'}</DialogTitle>
+                <DialogDescription>
+                    {currentScript?.id !== undefined ? 'Update this script.' : 'Create a new rich content guide for your users.'}
+                </DialogDescription>
+            </DialogHeader>
+            {currentScript && (
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="script-title">Title</Label>
+                        <Input
+                            id="script-title"
+                            value={currentScript.title || ''}
+                            onChange={(e) => setCurrentScript({ ...currentScript, title: e.target.value })}
+                            placeholder="e.g., A Guide to Healthy Living"
+                        />
+                    </div>
+                     <div className="grid gap-2">
+                        <Label htmlFor="script-category">Category</Label>
+                        <Input
+                            id="script-category"
+                            value={currentScript.category || ''}
+                            onChange={(e) => setCurrentScript({ ...currentScript, category: e.target.value })}
+                            placeholder="e.g., Health, Finance"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="script-imageUrl">Header Image URL (Optional)</Label>
+                        <Input
+                            id="script-imageUrl"
+                            value={currentScript.imageUrl || ''}
+                            onChange={(e) => setCurrentScript({ ...currentScript, imageUrl: e.target.value })}
+                            placeholder="https://placehold.co/600x400.png"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="script-content">Content (Markdown supported)</Label>
+                        <Textarea
+                            id="script-content"
+                            value={currentScript.content || ''}
+                            onChange={(e) => setCurrentScript({ ...currentScript, content: e.target.value })}
+                            placeholder="## Welcome to the guide..."
+                            className="min-h-[200px]"
+                        />
+                    </div>
+                </div>
+            )}
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsScriptDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveScript}>Save Script</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
     <Dialog open={isCategorizeDialogOpen} onOpenChange={setIsCategorizeDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -640,8 +753,8 @@ export default function ContentPage() {
                           <Label htmlFor="cat-media" className="font-normal">Media</Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                          <Checkbox id="cat-script" checked={categorizeSelection.script} onCheckedChange={(checked) => setCategorizeSelection(s => ({...s, script: !!checked}))} disabled/>
-                          <Label htmlFor="cat-script" className="font-normal text-muted-foreground">Script (coming soon)</Label>
+                          <Checkbox id="cat-script" checked={categorizeSelection.script} onCheckedChange={(checked) => setCategorizeSelection(s => ({...s, script: !!checked}))} />
+                          <Label htmlFor="cat-script" className="font-normal">Script</Label>
                       </div>
                   </div>
               </div>

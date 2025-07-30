@@ -50,6 +50,16 @@ async function initializeDatabase() {
             );
         `);
         
+        await newDb.exec(`
+            CREATE TABLE IF NOT EXISTS scripts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                category TEXT NOT NULL,
+                content TEXT NOT NULL,
+                imageUrl TEXT
+            );
+        `);
+
         // Check if media table needs migration for category column
         const mediaCols = await newDb.all("PRAGMA table_info(media);");
         if (!mediaCols.some(col => col.name === 'category')) {
@@ -177,6 +187,28 @@ export async function searchMedia(query: string) {
 
     return db.all(sql, ...params);
 }
+
+// --- Script Management ---
+export async function getScripts() {
+    const db = await getDb();
+    return db.all('SELECT id, title, category, content, imageUrl FROM scripts');
+}
+
+export async function addScript(title: string, category: string, content: string, imageUrl: string | null) {
+    const db = await getDb();
+    await db.run('INSERT INTO scripts (title, category, content, imageUrl) VALUES (?, ?, ?, ?)', title, category, content, imageUrl);
+}
+
+export async function updateScript(id: number, title: string, category: string, content: string, imageUrl: string | null) {
+    const db = await getDb();
+    await db.run('UPDATE scripts SET title = ?, category = ?, content = ?, imageUrl = ? WHERE id = ?', title, category, content, imageUrl, id);
+}
+
+export async function deleteScript(id: number) {
+    const db = await getDb();
+    await db.run('DELETE FROM scripts WHERE id = ?', id);
+}
+
 
 // --- Unanswered Conversations ---
 export async function getUnansweredConversations() {
